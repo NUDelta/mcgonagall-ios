@@ -10,6 +10,7 @@
 #include <mach/mach_time.h>
 
 #import "RPPTScreenCapturerIO.h"
+#import <ReplayKit/ReplayKit.h>
 
 #if !(TARGET_IPHONE_SIMULATOR)
 #import <IOSurface/IOSurfaceRef.h>
@@ -29,6 +30,9 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
     CVPixelBufferRef _pixelBuffer;
     BOOL _capturing;
     OTVideoFrame* _videoFrame;
+
+    BOOL _shouldCapture;
+    BOOL _isCapturing;
 }
 
 @synthesize videoCaptureConsumer;
@@ -47,7 +51,46 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
         [format setPixelFormat:OTPixelFormatARGB];
 
         _videoFrame = [[OTVideoFrame alloc] initWithFormat:format];
+
+        [[RPScreenRecorder sharedRecorder] startCaptureWithHandler:^(CMSampleBufferRef  _Nonnull sampleBuffer, RPSampleBufferType bufferType, NSError * _Nullable error) {
+
+            if (_shouldCapture && !_isCapturing) {
+                _isCapturing = true;
+
+
+                CVImageBufferRef ref = CMSampleBufferGetImageBuffer(sampleBuffer);
+                if (ref != NULL) {
+                    _shouldCapture = false;
+                    NSLog(@"tests");
+                    CIImage *ciImage = [CIImage imageWithCVPixelBuffer:ref];
+                    CIContext *temporaryContext = [CIContext contextWithOptions:nil];
+                    CGImageRef imageRef = [temporaryContext
+                                           createCGImage:ciImage
+                                           fromRect:CGRectMake(0, 0,
+                                                               CVPixelBufferGetWidth(ref),
+                                                               CVPixelBufferGetHeight(ref))];
+
+                    if (imageRef != NULL) {
+                        CGImageRef paddedScreen = [self resizeAndPadImage: imageRef];
+                        [self consumeFrame:paddedScreen];
+                        CGImageRelease(imageRef);
+                    }
+
+
+                }
+
+
+
+
+                _isCapturing = false;
+            }
+
+        } completionHandler:^(NSError * _Nullable error) {
+
+        }];
     }
+
+
     return self;
 }
 
@@ -115,10 +158,7 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
 
     dispatch_source_set_event_handler(_timer, ^{
         @autoreleasepool {
-            UIImage *screenshot = [_self screenshot];
-            CGImageRef paddedScreen = [self resizeAndPadImage: [screenshot CGImage]];
-            [_self consumeFrame:paddedScreen];
-
+            _shouldCapture = true;
         }
     });
 }
