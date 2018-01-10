@@ -30,14 +30,15 @@ class RPPTClient {
         return sessionManager.isConnected
     }
 
+    static let endpoint = "ws://rppt.meteorapp.com/websocket"
+
     // MARK: - Initialization
 
     init() {
         let version = "1"
-        let endpoint = "ws://rppt.meteorapp.com/websocket"
 
         client = MeteorClient(ddpVersion: version)
-        client.ddp = ObjectiveDDP(urlString: endpoint, delegate: client)
+        client.ddp = ObjectiveDDP(urlString: RPPTClient.endpoint, delegate: client)
 
         //swiftlint:disable discarded_notification_center_observer
         NotificationCenter.default.addObserver(forName: .MeteorClientDidConnect, object: nil, queue: nil) { _ in

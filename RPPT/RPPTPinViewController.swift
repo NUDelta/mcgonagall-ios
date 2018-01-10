@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import ReplayKit
 
 class RPPTPinViewController: UIViewController, UITextFieldDelegate {
 
@@ -44,6 +45,8 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         return button
     }()
 
+    private let endpointLabel = UILabel()
+
     // MARK: - View Life Cycle
 
     override func viewDidLoad() {
@@ -57,6 +60,11 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         view.addSubview(textField)
         view.addSubview(connectButton)
 
+        endpointLabel.textAlignment = .center
+        endpointLabel.translatesAutoresizingMaskIntoConstraints = false
+        endpointLabel.text = RPPTClient.endpoint
+        view.addSubview(endpointLabel)
+
         let constraints = [
             textField.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
             textField.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
@@ -66,7 +74,11 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
             connectButton.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
             connectButton.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
             connectButton.topAnchor.constraint(equalTo: textField.bottomAnchor, constant: 20),
-            connectButton.heightAnchor.constraint(equalToConstant: 50)
+            connectButton.heightAnchor.constraint(equalToConstant: 50),
+
+            endpointLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
+            endpointLabel.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
+            endpointLabel.topAnchor.constraint(equalTo: connectButton.bottomAnchor, constant: 20)
         ]
         NSLayoutConstraint.activate(constraints)
 
@@ -75,6 +87,10 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         navigationController?.navigationBar.isTranslucent = true
         navigationController?.navigationBar.tintColor = .purple
         navigationController?.view.backgroundColor = .clear
+
+        RPScreenRecorder.shared().startCapture(handler: { (_, _, _) in
+            RPScreenRecorder.shared().stopCapture(handler: nil)
+        }, completionHandler: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -82,9 +98,11 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         if UserDefaults.standard.bool(forKey: "SetupComplete") {
             textField.alpha = 1.0
             connectButton.alpha = 1.0
+            endpointLabel.alpha = 1.0
         } else {
             textField.alpha = 0.0
             connectButton.alpha = 0.0
+            endpointLabel.alpha = 0.0
         }
     }
 
@@ -103,6 +121,7 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         super.viewDidAppear(animated)
         textField.alpha = 1.0
         connectButton.alpha = 1.0
+        endpointLabel.alpha = 1.0
         textField.text = ""
         updateButtonState(enabled: false)
     }
@@ -144,6 +163,7 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         UIView.animate(withDuration: 0.5, animations: {
             self.textField.alpha = 0.0
             self.connectButton.alpha = 0.0
+            self.endpointLabel.alpha = 0.0
         }) { _ in
             self.performSegue(withIdentifier: "connect", sender: self.textField.text!)
         }
