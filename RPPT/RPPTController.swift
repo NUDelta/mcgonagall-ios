@@ -89,8 +89,6 @@ class RPPTController: UIViewController {
 
         client.onClientError = { error in
             print(error)
-            print(1)
-
         }
 
         client.onOpenTokError = { [weak self] error in

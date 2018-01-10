@@ -12,16 +12,6 @@
 #import "RPPTScreenCapturerIO.h"
 #import <ReplayKit/ReplayKit.h>
 
-#if !(TARGET_IPHONE_SIMULATOR)
-#import <IOSurface/IOSurfaceRef.h>
-#endif
-
-@interface UIWindow (LOLS)
-- (IOSurfaceRef)createIOSurface;
-@end
-
-CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
-
 @implementation RPPTScreenCapturer {
     CMTime _minFrameDuration;
     dispatch_queue_t _queue;
@@ -31,8 +21,8 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
     BOOL _capturing;
     OTVideoFrame* _videoFrame;
 
-    BOOL _shouldCapture;
-    BOOL _isCapturing;
+    BOOL _shouldCaptureFrame;
+    BOOL _isCapturingFrame;
 }
 
 @synthesize videoCaptureConsumer;
@@ -54,14 +44,13 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
 
         [[RPScreenRecorder sharedRecorder] startCaptureWithHandler:^(CMSampleBufferRef  _Nonnull sampleBuffer, RPSampleBufferType bufferType, NSError * _Nullable error) {
 
-            if (_shouldCapture && !_isCapturing) {
-                _isCapturing = true;
-
+            if (_shouldCaptureFrame && !_isCapturingFrame) {
+                _isCapturingFrame = true;
 
                 CVImageBufferRef ref = CMSampleBufferGetImageBuffer(sampleBuffer);
                 if (ref != NULL) {
-                    _shouldCapture = false;
-                    NSLog(@"tests");
+                    // Don't need another frame (until set to true by next timer tick)
+                    _shouldCaptureFrame = false;
                     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:ref];
                     CIContext *temporaryContext = [CIContext contextWithOptions:nil];
                     CGImageRef imageRef = [temporaryContext
@@ -69,27 +58,21 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
                                            fromRect:CGRectMake(0, 0,
                                                                CVPixelBufferGetWidth(ref),
                                                                CVPixelBufferGetHeight(ref))];
-
                     if (imageRef != NULL) {
                         CGImageRef paddedScreen = [self resizeAndPadImage: imageRef];
                         [self consumeFrame:paddedScreen];
+
+                        // Comment out for a fun time down memory lane... (get it? Because of the pain and suffering... and the memory management :P )
                         CGImageRelease(imageRef);
                     }
 
-
                 }
-
-
-
-
-                _isCapturing = false;
+                // Ok to capture another frame
+                _isCapturingFrame = false;
             }
 
-        } completionHandler:^(NSError * _Nullable error) {
-
-        }];
+        } completionHandler: nil];
     }
-
 
     return self;
 }
@@ -150,7 +133,6 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
  * block to execute periodically to send video frames.
  */
 - (void)initCapture {
-    __unsafe_unretained RPPTScreenCapturer* _self = self;
     _timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _queue);
 
     dispatch_source_set_timer(_timer, dispatch_walltime(NULL, 0),
@@ -158,7 +140,7 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
 
     dispatch_source_set_event_handler(_timer, ^{
         @autoreleasepool {
-            _shouldCapture = true;
+            _shouldCaptureFrame = true;
         }
     });
 }
@@ -347,26 +329,6 @@ CGImageRef UICreateCGImageFromIOSurface(CFTypeRef surface);
     UIGraphicsEndImageContext();
 
     return [[UIImage imageWithData:UIImageJPEGRepresentation(newImage,0.5)] CGImage];
-}
-
-- (UIImage*)screenshot {
-#if TARGET_OS_SIMULATOR
-    return [[UIImage alloc] init];
-#else
-    CFTypeRef backingData;
-
-    UIWindow *window = [[[UIApplication sharedApplication] windows] objectAtIndex:0];
-    IOSurfaceRef surface = [window createIOSurface];
-    backingData = surface;
-
-    CGImageRef ref = UICreateCGImageFromIOSurface(surface);
-    UIImage *image = [[UIImage alloc] initWithCGImage:ref];
-    CFRelease(ref);
-
-    CFRelease(backingData);
-    return image;
-#endif
-
 }
 
 - (void) consumeFrame:(CGImageRef)frame {
