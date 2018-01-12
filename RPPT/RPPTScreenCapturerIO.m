@@ -12,10 +12,10 @@
 #import "RPPTScreenCapturerIO.h"
 #import <ReplayKit/ReplayKit.h>
 
+int const PreferredFPS = 30;
+
 @implementation RPPTScreenCapturer {
-    CMTime _minFrameDuration;
-    dispatch_queue_t _queue;
-    dispatch_source_t _timer;
+    CADisplayLink *displayLink;
 
     CVPixelBufferRef _pixelBuffer;
     BOOL _capturing;
@@ -34,8 +34,6 @@
     if (self) {
         // Recommend sending 5 frames per second: Allows for higher image
         // quality per frame
-        _minFrameDuration = CMTimeMake(1, 5);
-        _queue = dispatch_queue_create("SCREEN_CAPTURE", NULL);
 
         OTVideoFormat *format = [[OTVideoFormat alloc] init];
         [format setPixelFormat:OTPixelFormatARGB];
@@ -133,29 +131,24 @@
  * block to execute periodically to send video frames.
  */
 - (void)initCapture {
-    _timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _queue);
+    displayLink = [[UIScreen mainScreen] displayLinkWithTarget:self selector:@selector(shouldCaptureFrame)];
+    [displayLink setPreferredFramesPerSecond: PreferredFPS];
+    [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+}
 
-    dispatch_source_set_timer(_timer, dispatch_walltime(NULL, 0),
-                              100ull * NSEC_PER_MSEC, 100ull * NSEC_PER_MSEC);
-
-    dispatch_source_set_event_handler(_timer, ^{
-        @autoreleasepool {
-            _shouldCaptureFrame = true;
-        }
-    });
+-(void)shouldCaptureFrame {
+    _shouldCaptureFrame = true;
 }
 
 - (void)releaseCapture {
-    _timer = nil;
+    displayLink = nil;
 }
 
 - (int32_t)startCapture
 {
     _capturing = YES;
 
-    if (_timer) {
-        dispatch_resume(_timer);
-    }
+    [displayLink setPaused:false];
 
     return 0;
 }
@@ -164,11 +157,7 @@
 {
     _capturing = NO;
 
-    dispatch_sync(_queue, ^{
-        if (_timer) {
-            dispatch_source_cancel(_timer);
-        }
-    });
+    [displayLink setPaused:true];
 
     return 0;
 }
@@ -356,9 +345,7 @@
     CVPixelBufferLockBaseAddress(ref, 0);
 
     _videoFrame.timestamp = time;
-    _videoFrame.format.estimatedFramesPerSecond =
-    _minFrameDuration.timescale / _minFrameDuration.value;
-    _videoFrame.format.estimatedCaptureDelay = 100;
+    _videoFrame.format.estimatedFramesPerSecond = PreferredFPS;
     _videoFrame.orientation = OTVideoOrientationUp;
 
     [_videoFrame clearPlanes];
