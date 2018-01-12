@@ -8,7 +8,7 @@ inhibit_all_warnings!
 target 'RPPT' do
 
 pod 'ObjectiveDDP', :git => 'https://github.com/boundsj/ObjectiveDDP.git'
-pod ‘OpenTok’, ‘~> 2.10’
+pod ‘OpenTok’, ‘~> 2.12.1’
 
 end
 
