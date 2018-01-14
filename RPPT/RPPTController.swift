@@ -29,7 +29,15 @@ class RPPTController: UIViewController {
 
     // MARK: - Properties
 
-    var task: RPPTTask?
+    var task: RPPTTask? {
+        didSet {
+            if let task = task {
+                title = task.content
+                self.arViewController?.addTask(task: task)
+                AudioServicesPlaySystemSound(1003)
+            }
+        }
+    }
 
     let client = RPPTClient.shared
 
@@ -39,6 +47,7 @@ class RPPTController: UIViewController {
 
     // I hate myself (don't we all)
     var pickerIsVisible = false
+    var arViewController: ARViewController?
 
     // MARK: - Gesture Recognizers
 
@@ -162,19 +171,30 @@ class RPPTController: UIViewController {
     @objc func messageChanged(notification: NSNotification) {
         guard let result = notification.userInfo as? [String:String] else { return }
 
-        if result["_id"] == task?.messageID && result["type"] == "task" {
-            title = result["content"]
-            AudioServicesPlaySystemSound(1003)
+        if result["type"] == "task",
+            let taskID = result["_id"],
+            taskID == task?.messageID,
+            let content = result["content"] {
+            self.task = RPPTTask(content: content, messageID: taskID)
         }
 
+        // temp hijacking
         if result["keyboard"] == "show" {
             // Where do these numbers come from
-            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
-            self.view.addSubview(textView)
-            self.textView.becomeFirstResponder()
+//            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
+//            self.view.addSubview(textView)
+//            self.textView.becomeFirstResponder()
+
+            if arViewController == nil {
+performSegue(withIdentifier: "showAR", sender: nil)
+            }
+
+
         } else if result["keyboard"] == "hide" {
-            self.textView.resignFirstResponder()
-            self.textView.removeFromSuperview()
+//            self.textView.resignFirstResponder()
+//            self.textView.removeFromSuperview()
+            arViewController?.dismiss(animated: true, completion: nil)
+            arViewController = nil
         }
 
         if result["camera"] == "show" {
@@ -337,6 +357,12 @@ class RPPTController: UIViewController {
 
         if scaledY < 500 {
             client.createTap(scaledX: scaledX, scaledY: scaledY)
+        }
+    }
+
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if let controller = segue.destination as? ARViewController {
+            arViewController = controller
         }
     }
 

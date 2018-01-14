@@ -46,6 +46,9 @@
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                     <navigationItem key="navigationItem" id="DkV-nY-N1L"/>
+                    <connections>
+                        <segue destination="nbn-kU-uUO" kind="presentation" identifier="showAR" id="r8p-fF-CZE"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
@@ -66,6 +69,22 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="xda-2D-pb8" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="-1364" y="115"/>
+        </scene>
+        <!--View Controller-->
+        <scene sceneID="YIs-ld-LRI">
+            <objects>
+                <viewController id="nbn-kU-uUO" customClass="ARViewController" customModule="ARMoji" customModuleProvider="target" sceneMemberID="viewController">
+                    <arskView key="view" contentMode="scaleToFill" id="jX8-WW-4yP">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                    </arskView>
+                    <connections>
+                        <outlet property="sceneView" destination="jX8-WW-4yP" id="B8h-68-HOu"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="0hm-f3-UVw" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="890" y="115"/>
         </scene>
     </scenes>
 </document>
