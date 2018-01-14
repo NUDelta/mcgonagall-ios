@@ -11,6 +11,7 @@
 
 #import "RPPTScreenCapturerIO.h"
 #import <ReplayKit/ReplayKit.h>
+@import VideoToolbox;
 
 int const PreferredFPS = 30;
 
@@ -49,22 +50,13 @@ int const PreferredFPS = 30;
                 if (ref != NULL) {
                     // Don't need another frame (until set to true by next timer tick)
                     _shouldCaptureFrame = false;
-                    CIImage *ciImage = [CIImage imageWithCVPixelBuffer:ref];
-                    CIContext *temporaryContext = [CIContext contextWithOptions:nil];
-                    CGImageRef imageRef = [temporaryContext
-                                           createCGImage:ciImage
-                                           fromRect:CGRectMake(0, 0,
-                                                               CVPixelBufferGetWidth(ref),
-                                                               CVPixelBufferGetHeight(ref))];
+                    CGImageRef imageRef = NULL;
+                    VTCreateCGImageFromCVPixelBuffer(ref, NULL, &imageRef);
                     if (imageRef != NULL) {
-                        CGImageRef paddedScreen = [self resizeAndPadImage: imageRef];
-                        [self consumeFrame:paddedScreen];
-
-                        // Comment out for a fun time down memory lane... (get it? Because of the pain and suffering... and the memory management :P )
-                        CGImageRelease(imageRef);
+                        [self consumeFrame:imageRef];
                     }
-
                 }
+                ref = NULL;
                 // Ok to capture another frame
                 _isCapturingFrame = false;
             }
@@ -294,7 +286,7 @@ int const PreferredFPS = 30;
 
 }
 
-- (CGImageRef)resizeAndPadImage:(CGImageRef)sourceCGImage {
+- (void) consumeFrame:(CGImageRef)sourceCGImage {
     CGFloat sourceWidth = CGImageGetWidth(sourceCGImage);
     CGFloat sourceHeight = CGImageGetHeight(sourceCGImage);
     CGSize sourceSize = CGSizeMake(sourceWidth, sourceHeight);
@@ -302,25 +294,26 @@ int const PreferredFPS = 30;
     CGRect destRectForSourceImage = CGRectZero;
 
     [RPPTScreenCapturer dimensionsForInputSize:sourceSize
-                              containerSize:&destContainerSize
-                                   drawRect:&destRectForSourceImage];
+                                 containerSize:&destContainerSize
+                                      drawRect:&destRectForSourceImage];
 
-    UIGraphicsBeginImageContextWithOptions(destContainerSize, NO, 1.0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGImageRef frame = NULL;
+    @autoreleasepool {
+        UIGraphicsBeginImageContextWithOptions(destContainerSize, NO, 1.0);
+        CGContextRef context = UIGraphicsGetCurrentContext();
 
-    // flip source image to match destination coordinate system
-    CGContextScaleCTM(context, 1.0, -1.0);
-    CGContextTranslateCTM(context, 0, -destRectForSourceImage.size.height);
-    CGContextDrawImage(context, destRectForSourceImage, sourceCGImage);
+        // flip source image to match destination coordinate system
+        CGContextScaleCTM(context, 1.0, -1.0);
+        CGContextTranslateCTM(context, 0, -destRectForSourceImage.size.height);
+        CGContextDrawImage(context, destRectForSourceImage, sourceCGImage);
 
-    // Clean up and get the new image.
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    return [[UIImage imageWithData:UIImageJPEGRepresentation(newImage,0.5)] CGImage];
-}
-
-- (void) consumeFrame:(CGImageRef)frame {
+        // Clean up and get the new image.
+        UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        frame = CGImageCreateCopy([newImage CGImage]);
+        newImage = NULL;
+    }
+    CGImageRelease(sourceCGImage);
 
     [self checkImageSize:frame];
 
@@ -353,6 +346,7 @@ int const PreferredFPS = 30;
     [self.videoCaptureConsumer consumeFrame:_videoFrame];
 
     CVPixelBufferUnlockBaseAddress(ref, 0);
+    CGImageRelease(frame);
 }
 
 @end
