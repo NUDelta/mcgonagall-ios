@@ -3,10 +3,12 @@
 
 source 'https://github.com/CocoaPods/Specs.git'
 
+inhibit_all_warnings!
+
 target 'RPPT' do
 
-pod 'ObjectiveDDP', :path => '../ObjectiveDDP/ObjectiveDDP.podspec'
-pod ‘OpenTok’, ‘~> 2.10’
+pod 'ObjectiveDDP', :git => 'https://github.com/boundsj/ObjectiveDDP.git'
+pod ‘OpenTok’, ‘~> 2.12.1’
 
 end
 
