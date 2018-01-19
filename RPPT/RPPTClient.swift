@@ -7,13 +7,15 @@
 //
 
 import Foundation
+import CoreLocation
 
 class RPPTClient {
 
     // MARK: - Closures
 
-    var onSubscriberConnected: ((UIView) -> Void)?
     var onTaskUpdated: ((RPPTTask) -> Void)?
+    var onSubscriberConnected: ((UIView) -> Void)?
+    var onLocationUpdated: ((CLLocationCoordinate2D) -> Void)?
 
     var onClientError: ((Error?) -> Void)?
     var onOpenTokError: ((Error) -> Void)?

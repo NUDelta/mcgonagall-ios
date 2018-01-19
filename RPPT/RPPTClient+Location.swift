@@ -31,10 +31,7 @@ extension RPPTClient {
                                         parameters: [params] ,
                                         responseCallback: nil)
 
-//            // hardcoded mapSpan could eventually become a wizard input
-//            let mapSpan = MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015)
-//            let mapCoordinateRegion = MKCoordinateRegion(center: coordinate, span: mapSpan)
-//            self.mapView.region = mapCoordinateRegion
+            self.onLocationUpdated?(coordinate)
         }
 
     }

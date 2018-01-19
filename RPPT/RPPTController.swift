@@ -33,11 +33,13 @@ class RPPTController: UIViewController {
         didSet {
             if let task = task {
                 title = task.content
-                self.arViewController?.addTask(task: task)
                 AudioServicesPlaySystemSound(1003)
             }
         }
     }
+
+    var touchDelay: Timer?
+    var canSendTouches = true
 
     let client = RPPTClient.shared
 
@@ -47,11 +49,6 @@ class RPPTController: UIViewController {
 
     // I hate myself (don't we all)
     var pickerIsVisible = false
-    var arViewController: ARViewController?
-
-    // MARK: - Gesture Recognizers
-
-    let panGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(RPPTController.handlePan))
 
     // MARK: - View Life Cycle
 
@@ -59,7 +56,6 @@ class RPPTController: UIViewController {
         super.viewDidLoad()
 
         title = "Connecting"
-        view.addGestureRecognizer(panGestureRecognizer)
 
         textView.delegate = self
         textView.backgroundColor = .clear
@@ -94,6 +90,12 @@ class RPPTController: UIViewController {
     private func setupClient() {
         client.onTaskUpdated = { [weak self] task in
             self?.task = task
+        }
+
+        client.onLocationUpdated = { [weak self] location in
+            let mapSpan = MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015)
+            let mapCoordinateRegion = MKCoordinateRegion(center: location, span: mapSpan)
+            self?.mapView.region = mapCoordinateRegion
         }
 
         client.onClientError = { error in
@@ -181,20 +183,15 @@ class RPPTController: UIViewController {
         // temp hijacking
         if result["keyboard"] == "show" {
             // Where do these numbers come from
-//            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
-//            self.view.addSubview(textView)
-//            self.textView.becomeFirstResponder()
+            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
+            self.view.addSubview(textView)
+            self.textView.becomeFirstResponder()
 
-            if arViewController == nil {
-performSegue(withIdentifier: "showAR", sender: nil)
-            }
 
 
         } else if result["keyboard"] == "hide" {
-//            self.textView.resignFirstResponder()
-//            self.textView.removeFromSuperview()
-            arViewController?.dismiss(animated: true, completion: nil)
-            arViewController = nil
+            self.textView.resignFirstResponder()
+            self.textView.removeFromSuperview()
         }
 
         if result["camera"] == "show" {
@@ -334,36 +331,41 @@ performSegue(withIdentifier: "showAR", sender: nil)
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
 
-        guard let point = event?.allTouches?.first?.location(in: view) else {
-            fatalError("Yup somethings not right")
-        }
-
-        sendTap(point: point)
+        let taps = touches.flatMap({ $0.location(in: view) })
+        sendTaps(points: taps)
     }
 
-    @objc func handlePan(pan: UIPanGestureRecognizer) {
-        let motion = pan.translation(in: self.view)
-        sendTap(point: lastPoint + motion)
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesMoved(touches, with: event)
+
+        let taps = touches.flatMap({ $0.location(in: view) })
+        sendTaps(points: taps)
     }
 
     // TODO: Fix
     //swiftlint:disable:next identifier_name
-    func sendTap(point: CGPoint) {
+    func sendTaps(points: [CGPoint]) {
+
+        guard canSendTouches else {
+            return
+        }
+
+        canSendTouches = false
 
         // TODO: WHY DOES THIS EXIST
-        let screenRect = UIScreen.main.bounds
-        let scaledX = point.x * 320 / screenRect.width
-        let scaledY = point.y * 460 / screenRect.width * 1.4375
+        for point in points {
+            let screenRect = UIScreen.main.bounds
+            let scaledX = point.x * 320 / screenRect.width
+            let scaledY = point.y * 460 / screenRect.height
 
-        if scaledY < 500 {
+            print(#function)
+
             client.createTap(scaledX: scaledX, scaledY: scaledY)
         }
-    }
 
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if let controller = segue.destination as? ARViewController {
-            arViewController = controller
-        }
+        touchDelay = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false, block: { _ in
+            self.canSendTouches = true
+        })
     }
 
 }
