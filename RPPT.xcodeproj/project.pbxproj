@@ -15,8 +15,6 @@
 		142001541FD7622800D21F94 /* RPPTClient+Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142001531FD7622800D21F94 /* RPPTClient+Session.swift */; };
 		142001561FD767FC00D21F94 /* RPPTTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142001551FD767FC00D21F94 /* RPPTTask.swift */; };
 		143709811FD78BDA0096F545 /* RPPTExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 143709801FD78BDA0096F545 /* RPPTExtensions.swift */; };
-		146636D3200B14FA00F65777 /* ARViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146636D1200B14FA00F65777 /* ARViewController.swift */; };
-		146636D4200B14FA00F65777 /* ARScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146636D2200B14FA00F65777 /* ARScene.swift */; };
 		14A28F012005B81800875251 /* RPPTScreenCapturerIO.m in Sources */ = {isa = PBXBuildFile; fileRef = 14E81ABA1FE0364700D80584 /* RPPTScreenCapturerIO.m */; };
 		14A9835A1FDE08BB00FDC137 /* RPPTInitalFlowViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A983541FDE08BA00FDC137 /* RPPTInitalFlowViewController.swift */; };
 		14A9835B1FDE08BB00FDC137 /* RPPTScreenFlowViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A983551FDE08BA00FDC137 /* RPPTScreenFlowViewController.swift */; };
@@ -43,8 +41,6 @@
 		142001531FD7622800D21F94 /* RPPTClient+Session.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "RPPTClient+Session.swift"; sourceTree = "<group>"; };
 		142001551FD767FC00D21F94 /* RPPTTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPPTTask.swift; sourceTree = "<group>"; };
 		143709801FD78BDA0096F545 /* RPPTExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPPTExtensions.swift; sourceTree = "<group>"; };
-		146636D1200B14FA00F65777 /* ARViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ARViewController.swift; sourceTree = "<group>"; };
-		146636D2200B14FA00F65777 /* ARScene.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ARScene.swift; sourceTree = "<group>"; };
 		14A983541FDE08BA00FDC137 /* RPPTInitalFlowViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RPPTInitalFlowViewController.swift; sourceTree = "<group>"; };
 		14A983551FDE08BA00FDC137 /* RPPTScreenFlowViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RPPTScreenFlowViewController.swift; sourceTree = "<group>"; };
 		14A983561FDE08BA00FDC137 /* RPPTFinalFlowViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RPPTFinalFlowViewController.swift; sourceTree = "<group>"; };
@@ -115,8 +111,6 @@
 		1437097C1FD781A60096F545 /* Other */ = {
 			isa = PBXGroup;
 			children = (
-				146636D2200B14FA00F65777 /* ARScene.swift */,
-				146636D1200B14FA00F65777 /* ARViewController.swift */,
 				AA881AB319DE6F88004F9DB1 /* RPPTAppDelegate.swift */,
 				143709801FD78BDA0096F545 /* RPPTExtensions.swift */,
 				94449CCB1E2367CC0033430C /* RPPTScreenCapturer.swift */,
@@ -360,7 +354,6 @@
 				143709811FD78BDA0096F545 /* RPPTExtensions.swift in Sources */,
 				AA881AB619DE6F88004F9DB1 /* RPPTController.swift in Sources */,
 				AA881AB419DE6F88004F9DB1 /* RPPTAppDelegate.swift in Sources */,
-				146636D4200B14FA00F65777 /* ARScene.swift in Sources */,
 				14A9835C1FDE08BB00FDC137 /* RPPTFinalFlowViewController.swift in Sources */,
 				142001541FD7622800D21F94 /* RPPTClient+Session.swift in Sources */,
 				140B5FD91FDE4ABC00386187 /* RPPTPinViewController.swift in Sources */,
@@ -369,7 +362,6 @@
 				142001481FD74BC000D21F94 /* RPPTClient+Location.swift in Sources */,
 				14A9835F1FDE08BB00FDC137 /* RPPTLocationFlowViewController.swift in Sources */,
 				14A9835E1FDE08BB00FDC137 /* RPPTCameraFlowViewController.swift in Sources */,
-				146636D3200B14FA00F65777 /* ARViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
