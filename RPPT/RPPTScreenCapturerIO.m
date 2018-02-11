@@ -24,6 +24,8 @@ int const PreferredFPS = 30;
 
     BOOL _shouldCaptureFrame;
     BOOL _isCapturingFrame;
+
+    NSOperationQueue *queue;
 }
 
 @synthesize videoCaptureConsumer;
@@ -35,6 +37,9 @@ int const PreferredFPS = 30;
     if (self) {
         // Recommend sending 5 frames per second: Allows for higher image
         // quality per frame
+
+        queue = [[NSOperationQueue alloc] init];
+        [queue setMaxConcurrentOperationCount:1];
 
         OTVideoFormat *format = [[OTVideoFormat alloc] init];
         [format setPixelFormat:OTPixelFormatARGB];
@@ -53,7 +58,9 @@ int const PreferredFPS = 30;
                     CGImageRef imageRef = NULL;
                     VTCreateCGImageFromCVPixelBuffer(ref, NULL, &imageRef);
                     if (imageRef != NULL) {
-                        [self consumeFrame:imageRef];
+                        [queue addOperationWithBlock:^{
+                            [self consumeFrame:imageRef];
+                        }];
                     }
                 }
                 ref = NULL;
@@ -346,6 +353,7 @@ int const PreferredFPS = 30;
     [self.videoCaptureConsumer consumeFrame:_videoFrame];
 
     CVPixelBufferUnlockBaseAddress(ref, 0);
+
     CGImageRelease(frame);
 }
 
