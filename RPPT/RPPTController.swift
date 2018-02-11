@@ -46,6 +46,7 @@ class RPPTController: UIViewController {
     var lastPoint: CGPoint = .zero
 
     var photoArray = [UIImage]()
+    var keyboardViewLabel: UILabel?
 
     // I hate myself (don't we all)
     var pickerIsVisible = false
@@ -71,6 +72,34 @@ class RPPTController: UIViewController {
         activityView.alpha = 0.0
         navigationController?.navigationBar.alpha = 0.0
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidShow, object: nil, queue: nil) { notification in
+            guard let userInfo = notification.userInfo else {return}
+
+            if let myData = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect {
+                DispatchQueue.main.async {
+                    let tempView = UILabel(frame: myData)
+                    tempView.backgroundColor = UIColor.darkGray
+                    tempView.text = "User Keyboard Active"
+                    tempView.textAlignment = .center
+                    tempView.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+                    tempView.textColor = UIColor.white
+
+                    self.keyboardViewLabel = tempView
+                    self.view.addSubview(tempView)
+                }
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { notification in
+            DispatchQueue.main.async {
+                self.keyboardViewLabel?.removeFromSuperview()
+            }
+        }
+    }
+
+    func key() {
+
     }
 
     override func viewDidAppear(_ animated: Bool) {
