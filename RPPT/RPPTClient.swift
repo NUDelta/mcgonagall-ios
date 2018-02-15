@@ -32,6 +32,7 @@ class RPPTClient {
         return sessionManager.isConnected
     }
 
+    //     static let endpoint = "ws://10.105.181.232:3000/websocket"
     static let endpoint = "ws://rppt.meteorapp.com/websocket"
 
     // MARK: - Initialization
@@ -66,7 +67,7 @@ class RPPTClient {
         client.ddp.connectWebSocket()
     }
 
-    func start(withSyncCode syncCode: String) {
+    func start(withSyncCode syncCode: String, safeAreaY: CGFloat) {
         self.syncCode = syncCode
 
         client.addSubscription("messages", withParameters: [syncCode])
@@ -102,6 +103,13 @@ class RPPTClient {
             } else if let properties = RPPTSessionProperties(result: response?["result"], isPublisher: true) {
                 self.sessionManager.connect(withProperties: properties) { error in
                     print("Failed to connect with error: \(String(describing: error))")
+
+                    let parameters: [Any] = [self.syncCode, UIScreen.main.bounds.width, UIScreen.main.bounds.height, safeAreaY]
+
+                    self.client.callMethodName("setStreamSize",
+                                               parameters: parameters,
+                                               responseCallback: nil)
+
                 }
             }
         }

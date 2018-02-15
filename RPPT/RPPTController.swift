@@ -25,7 +25,7 @@ class RPPTController: UIViewController {
     let imageView = UIImageView()
     let overlayedImageView = UIImageView()
 
-    let picker = UIImagePickerController()
+    var picker: UIImagePickerController?
 
     // MARK: - Properties
 
@@ -48,8 +48,6 @@ class RPPTController: UIViewController {
     var photoArray = [UIImage]()
     var keyboardViewLabel: UILabel?
 
-    // I hate myself (don't we all)
-    var pickerIsVisible = false
 
     // MARK: - View Life Cycle
 
@@ -61,7 +59,6 @@ class RPPTController: UIViewController {
         textView.delegate = self
         textView.backgroundColor = .clear
 
-        setupImagePicker()
         setupClient()
 
         activityView.center = view.center
@@ -106,7 +103,7 @@ class RPPTController: UIViewController {
         super.viewDidAppear(animated)
         if !viewHasAppeared {
             viewHasAppeared = true
-            client.start(withSyncCode: syncCode)
+            client.start(withSyncCode: syncCode, safeAreaY: view.safeAreaInsets.top)
             UIView.animate(withDuration: 0.5) {
                 self.activityView.alpha = 1.0
                 self.navigationController?.navigationBar.alpha = 1.0
@@ -115,7 +112,7 @@ class RPPTController: UIViewController {
     }
 
     // MARK: - Setup
-
+ 
     private func setupClient() {
         client.onTaskUpdated = { [weak self] task in
             self?.task = task
@@ -176,13 +173,6 @@ class RPPTController: UIViewController {
                                                object: nil)
     }
 
-    func setupImagePicker() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
-        picker.sourceType = .camera
-        picker.mediaTypes = [kUTTypeImage as String]
-        picker.delegate = self
-    }
-
     // MARK: - Helpers
 
     func presentAlert(title: String, message: String) {
@@ -224,14 +214,20 @@ class RPPTController: UIViewController {
         }
 
         if result["camera"] == "show" {
-            if (!pickerIsVisible) {
-                self.present(picker, animated: true, completion: nil)
-                pickerIsVisible = true
+            if picker == nil {
+                picker = UIImagePickerController()
+                picker?.sourceType = .camera
+                picker?.mediaTypes = [kUTTypeImage as String]
+                picker?.delegate = self
+
+                if let picker = picker {
+                    present(picker, animated: true, completion: nil)
+                }
             }
         } else if result["camera"] == "hide" {
-            if (pickerIsVisible) {
-                picker.dismiss(animated: true, completion: nil)
-                pickerIsVisible = false
+            if picker != nil {
+                picker?.dismiss(animated: true, completion: nil)
+                picker = nil
             }
         }
 
@@ -336,8 +332,8 @@ class RPPTController: UIViewController {
         overlayedImageView.image = decodedimage
         overlayedImageView.frame = CGRect(x: x, y: y, width: width, height: height)
         if (isCameraOverlay) {
-            picker.showsCameraControls = false
-            picker.cameraOverlayView = overlayedImageView
+            picker?.showsCameraControls = false
+            picker?.cameraOverlayView = overlayedImageView
         } else {
             self.view.addSubview(overlayedImageView)
             self.view.bringSubview(toFront: overlayedImageView)
@@ -383,13 +379,7 @@ class RPPTController: UIViewController {
 
         // TODO: WHY DOES THIS EXIST
         for point in points {
-            let screenRect = UIScreen.main.bounds
-            let scaledX = point.x * 320 / screenRect.width
-            let scaledY = point.y * 460 / screenRect.height
-
-            print(#function)
-
-            client.createTap(scaledX: scaledX, scaledY: scaledY)
+            client.createTap(scaledX: point.x, scaledY: point.y)
         }
 
         touchDelay = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false, block: { _ in
