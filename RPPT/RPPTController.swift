@@ -56,6 +56,7 @@ class RPPTController: UIViewController {
 
         title = "Connecting"
 
+        textView.returnKeyType = .send
         textView.delegate = self
         textView.backgroundColor = .clear
 
@@ -112,7 +113,7 @@ class RPPTController: UIViewController {
     }
 
     // MARK: - Setup
- 
+
     private func setupClient() {
         client.onTaskUpdated = { [weak self] task in
             self?.task = task
@@ -147,6 +148,7 @@ class RPPTController: UIViewController {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
 
             subscriberView.translatesAutoresizingMaskIntoConstraints = false
+//            subscriberView.transform = CGAffineTransform(scaleX: -1, y: 1)
             self?.view.addSubview(subscriberView)
 
             let constraints = [
