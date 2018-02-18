@@ -14,12 +14,12 @@ extension RPPTClient {
 
     func setupLocationManager() {
 
-        locationManager.onError = { error in
+        locationManager.onError = { [weak self] error in
             print(error.localizedDescription)
         }
 
-        locationManager.onUpdate = { coordinate in
-            guard let syncCode = self.syncCode else { return }
+        locationManager.onUpdate = { [weak self] coordinate in
+            guard let syncCode = self?.syncCode else { return }
 
             let params: [String: Any] = [
                 "lat": coordinate.latitude,
@@ -27,11 +27,11 @@ extension RPPTClient {
                 "session": syncCode
             ]
 
-            self.client.callMethodName("/locations/insert",
+            self?.client.callMethodName("/locations/insert",
                                         parameters: [params] ,
                                         responseCallback: nil)
 
-            self.onLocationUpdated?(coordinate)
+            self?.onLocationUpdated?(coordinate)
         }
 
     }

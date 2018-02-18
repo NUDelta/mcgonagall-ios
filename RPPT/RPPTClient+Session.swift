@@ -14,22 +14,22 @@ extension RPPTClient {
 
     // TODO: CHECK THREADS
     func setupSessionManager() {
-        sessionManager.onSubscriberConnected = { subscriberView in
-            self.onSubscriberConnected?(subscriberView)
+        sessionManager.onSubscriberConnected = { [weak self] subscriberView in
+            self?.onSubscriberConnected?(subscriberView)
         }
 
-        sessionManager.onSessionError = { error in
-            self.onOpenTokError?(error)
+        sessionManager.onSessionError = { [weak self] error in
+            self?.onOpenTokError?(error)
         }
 
-        sessionManager.onPublisherError = { error in
-            self.onOpenTokError?(error)
+        sessionManager.onPublisherError = { [weak self] error in
+            self?.onOpenTokError?(error)
         }
 
-        sessionManager.onSubscriberError = { error, view in
+        sessionManager.onSubscriberError = { [weak self] error, view in
             view?.removeFromSuperview()
             if let error = error {
-                self.onOpenTokError?(error)
+                self?.onOpenTokError?(error)
             }
         }
 

@@ -9,28 +9,18 @@
 import UIKit
 import ReplayKit
 
-class RPPTPinViewController: UIViewController, UITextFieldDelegate {
+class RPPTPinViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
 
     // MARK: - Properties
 
-    private let textField: UITextField = {
-        let textField = UITextField()
-        textField.textAlignment = .center
-        textField.contentVerticalAlignment = .center
-
-        textField.placeholder = "WizardPin"
-        textField.keyboardType = .numberPad
-        textField.font = UIFont.systemFont(ofSize: 70.0, weight: .semibold)
-        textField.translatesAutoresizingMaskIntoConstraints = false
-
-        let attributes: [NSAttributedStringKey: Any] = [
-            .foregroundColor: UIColor.lightGray,
-            .font: UIFont.systemFont(ofSize: 50.0, weight: .medium)
-        ]
-
-        textField.attributedPlaceholder = NSAttributedString(string: "WizardPin",
-                                                             attributes: attributes)
-        return textField
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .center
+        label.text = "Scan QR Code"
+        label.font = UIFont.systemFont(ofSize: 40.0, weight: .semibold)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textColor = UIColor.white
+        return label
     }()
 
     private let connectButton: UIButton = {
@@ -38,47 +28,55 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         button.layer.cornerRadius = 10
         button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
 
-        button.setTitle("Connect", for: .normal)
+        button.setTitle("Retry", for: .normal)
         button.setTitleColor(.white, for: .normal)
+
+        button.backgroundColor = #colorLiteral(red: 0.2745098039, green: 0.6274509804, blue: 0.9019607843, alpha: 1)
 
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
 
-    private let endpointLabel = UILabel()
+    private var captureSession = AVCaptureSession()
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private let supportedCodeTypes = [AVMetadataObject.ObjectType.upce,
+                                      AVMetadataObject.ObjectType.code39,
+                                      AVMetadataObject.ObjectType.code39Mod43,
+                                      AVMetadataObject.ObjectType.code93,
+                                      AVMetadataObject.ObjectType.code128,
+                                      AVMetadataObject.ObjectType.ean8,
+                                      AVMetadataObject.ObjectType.ean13,
+                                      AVMetadataObject.ObjectType.aztec,
+                                      AVMetadataObject.ObjectType.pdf417,
+                                      AVMetadataObject.ObjectType.itf14,
+                                      AVMetadataObject.ObjectType.dataMatrix,
+                                      AVMetadataObject.ObjectType.interleaved2of5,
+                                      AVMetadataObject.ObjectType.qr]
+
+    private var capturedURL = false
+    private var inSetup = false
 
     // MARK: - View Life Cycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        textField.delegate = self
-        connectButton.translatesAutoresizingMaskIntoConstraints = false
-        connectButton.addTarget(self, action: #selector(connectButtonPressed), for: .touchUpInside)
-        updateButtonState(enabled: false)
+        connectButton.alpha = 0.0
+        connectButton.addTarget(self, action: #selector(retryButtonPressed), for: .touchUpInside)
 
-        view.addSubview(textField)
+        view.addSubview(titleLabel)
         view.addSubview(connectButton)
 
-        endpointLabel.textAlignment = .center
-        endpointLabel.translatesAutoresizingMaskIntoConstraints = false
-        endpointLabel.text = RPPTClient.endpoint
-        view.addSubview(endpointLabel)
-
         let constraints = [
-            textField.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
-            textField.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
-            textField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            textField.heightAnchor.constraint(equalToConstant: 100),
+            titleLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
+            titleLabel.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
+            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            titleLabel.heightAnchor.constraint(equalToConstant: 100),
 
             connectButton.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
             connectButton.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
-            connectButton.topAnchor.constraint(equalTo: textField.bottomAnchor, constant: 20),
-            connectButton.heightAnchor.constraint(equalToConstant: 50),
-
-            endpointLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 20),
-            endpointLabel.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
-            endpointLabel.topAnchor.constraint(equalTo: connectButton.bottomAnchor, constant: 20)
+            connectButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            connectButton.heightAnchor.constraint(equalToConstant: 50)
         ]
         NSLayoutConstraint.activate(constraints)
 
@@ -91,83 +89,129 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         RPScreenRecorder.shared().startCapture(handler: { (_, _, _) in
             RPScreenRecorder.shared().stopCapture(handler: nil)
         }, completionHandler: nil)
+
+        if UserDefaults.standard.bool(forKey: "SetupComplete") {
+            configureSession()
+        }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        captureSession.stopRunning()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if UserDefaults.standard.bool(forKey: "SetupComplete") {
-            textField.alpha = 1.0
-            connectButton.alpha = 1.0
-            endpointLabel.alpha = 1.0
+        if !UserDefaults.standard.bool(forKey: "SetupComplete") {
+            inSetup = true
+        } else if inSetup {
+            inSetup = false
+            configureSession()
         } else {
-            textField.alpha = 0.0
-            connectButton.alpha = 0.0
-            endpointLabel.alpha = 0.0
+            captureSession.startRunning()
         }
+        capturedURL = false
+        titleLabel.text = "Scan QR Code"
+        connectButton.alpha = 0.0
+        RPPTClient.shared?.disconnect()
+        RPPTClient.shared = nil
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if UserDefaults.standard.bool(forKey: "SetupComplete") {
-            textField.isEnabled = true
-            textField.becomeFirstResponder()
-        } else {
+        if !UserDefaults.standard.bool(forKey: "SetupComplete") {
             let flowNav = UINavigationController(rootViewController: RPPTInitalFlowViewController())
             navigationController?.present(flowNav, animated: false, completion: nil)
         }
     }
 
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        textField.alpha = 1.0
-        connectButton.alpha = 1.0
-        endpointLabel.alpha = 1.0
-        textField.text = ""
-        updateButtonState(enabled: false)
-    }
+    // MARK: - AVSession
 
-    // MARK: - Helpers
+    func configureSession() {
+        // Get the back-facing camera for capturing videos
+        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInDualCamera],
+                                                                      mediaType: AVMediaType.video,
+                                                                      position: .back)
 
-    func updateButtonState(enabled: Bool) {
-        if enabled {
-            connectButton.backgroundColor = .purple
-            connectButton.isEnabled = true
-        } else {
-            connectButton.backgroundColor = UIColor.purple.withAlphaComponent(0.5)
-            connectButton.isEnabled = false
-        }
-    }
-
-    // MARK: - UITextFieldDelegate
-
-    func textField(_ textField: UITextField,
-                   shouldChangeCharactersIn range: NSRange,
-                   replacementString string: String) -> Bool {
-
-        guard let currentString = textField.text as NSString? else {
-            return false
+        guard let captureDevice = deviceDiscoverySession.devices.first else {
+            fatalError()
         }
 
-        let newString = currentString.replacingCharacters(in: range, with: string) as NSString
-        updateButtonState(enabled: newString.length >= 5)
-        return newString.length <= 5
-    }
+        do {
+            // Get an instance of the AVCaptureDeviceInput class using the previous device object.
+            let input = try AVCaptureDeviceInput(device: captureDevice)
 
-    // MARK: - Actions
+            // Set the input device on the capture session.
+            captureSession.addInput(input)
+
+            let captureMetadataOutput = AVCaptureMetadataOutput()
+            captureSession.addOutput(captureMetadataOutput)
+
+            captureMetadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+            captureMetadataOutput.metadataObjectTypes = supportedCodeTypes
+
+        } catch {
+            // If any error occurs, simply print it out and don't continue any more.
+            print(error)
+            return
+        }
+
+        // Initialize the video preview layer and add it as a sublayer to the viewPreview view's layer.
+        previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        previewLayer?.videoGravity = AVLayerVideoGravity.resizeAspectFill
+        previewLayer?.frame = view.layer.bounds
+        view.layer.insertSublayer(previewLayer!, at: 0)
+
+        // Start video capture.
+        captureSession.startRunning()
+    }
 
     @objc
-    func connectButtonPressed() {
-        textField.isEnabled = false
-        textField.resignFirstResponder()
-
+    func retryButtonPressed() {
+        titleLabel.text = "Scan QR Code"
         UIView.animate(withDuration: 0.5, animations: {
-            self.textField.alpha = 0.0
             self.connectButton.alpha = 0.0
-            self.endpointLabel.alpha = 0.0
-        }) { _ in
-            self.performSegue(withIdentifier: "connect", sender: self.textField.text!)
-        }
+        })
+        capturedURL = false
     }
+
+    // MARK: - AVCaptureMetadataOutputObjectsDelegate
+
+    func metadataOutput(_ output: AVCaptureMetadataOutput,
+                        didOutput metadataObjects: [AVMetadataObject],
+                        from connection: AVCaptureConnection) {
+
+        guard !capturedURL,
+            let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+            supportedCodeTypes.contains(object.type),
+            let objectString = object.stringValue as NSString?,
+            objectString.contains("?"),
+            URL(string: objectString as String) != nil else {
+                return
+        }
+
+        capturedURL = true
+
+        let range = objectString.range(of: "?")
+        let endPoint = objectString.substring(to: range.location)
+        let pin = objectString.substring(from: range.location + 1)
+
+        titleLabel.text = "Connecting"
+
+        RPPTClient.shared = RPPTClient(endpoint: endPoint, ready: {
+            self.performSegue(withIdentifier: "connect", sender: pin)
+        })
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            UIView.animate(withDuration: 0.25, animations: {
+                self.connectButton.alpha = 1.0
+            })
+        }
+
+        RPPTClient.shared?.connectWebSocket()
+    }
+
+    // MARK: - Segue
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         guard let syncCode = sender as? String,

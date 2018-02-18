@@ -22,7 +22,7 @@ class RPPTClient {
 
     // MARK: - Properties
 
-    static let shared = RPPTClient()
+    static var shared: RPPTClient?
     let client: MeteorClient
     let sessionManager = RPPTSessionManager()
     let locationManager = RPPTLocationManager()
@@ -32,16 +32,13 @@ class RPPTClient {
         return sessionManager.isConnected
     }
 
-    //     static let endpoint = "ws://10.105.181.232:3000/websocket"
-    static let endpoint = "ws://rppt.meteorapp.com/websocket"
-
     // MARK: - Initialization
 
-    init() {
+    init(endpoint: String, ready: @escaping () -> Void) {
         let version = "1"
 
         client = MeteorClient(ddpVersion: version)
-        client.ddp = ObjectiveDDP(urlString: RPPTClient.endpoint, delegate: client)
+        client.ddp = ObjectiveDDP(urlString: endpoint, delegate: client)
 
         //swiftlint:disable discarded_notification_center_observer
         NotificationCenter.default.addObserver(forName: .MeteorClientDidConnect, object: nil, queue: nil) { _ in
@@ -51,6 +48,7 @@ class RPPTClient {
 
         NotificationCenter.default.addObserver(forName: .MeteorClientConnectionReady, object: nil, queue: nil) { _ in
             print("RPPTClient: MeteorClientConnectionReady")
+            ready()
         }
 
         NotificationCenter.default.addObserver(forName: .MeteorClientDidDisconnect, object: nil, queue: nil) { _ in
@@ -65,6 +63,10 @@ class RPPTClient {
 
     func connectWebSocket() {
         client.ddp.connectWebSocket()
+    }
+
+    func disconnect() {
+        client.ddp.disconnectWebSocket()
     }
 
     func start(withSyncCode syncCode: String, safeAreaY: CGFloat) {

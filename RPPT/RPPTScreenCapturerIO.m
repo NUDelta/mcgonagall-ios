@@ -158,6 +158,10 @@ int const PreferredFPS = 30;
 
     [displayLink setPaused:true];
 
+    [[RPScreenRecorder sharedRecorder] stopCaptureWithHandler:^(NSError * _Nullable error) {
+
+    }];
+
     return 0;
 }
 

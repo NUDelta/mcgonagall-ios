@@ -71,7 +71,7 @@ class RPPTController: UIViewController {
         navigationController?.navigationBar.alpha = 0.0
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidShow, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidShow, object: nil, queue: nil) { [weak self] notification in
             guard let userInfo = notification.userInfo else {return}
 
             if let myData = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect {
@@ -83,28 +83,28 @@ class RPPTController: UIViewController {
                     tempView.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
                     tempView.textColor = UIColor.white
 
-                    self.keyboardViewLabel = tempView
-                    self.view.addSubview(tempView)
+                    self?.keyboardViewLabel = tempView
+                    self?.view.addSubview(tempView)
                 }
             }
         }
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { [weak self] _ in
             DispatchQueue.main.async {
-                self.keyboardViewLabel?.removeFromSuperview()
+                self?.keyboardViewLabel?.removeFromSuperview()
             }
         }
     }
 
-    func key() {
-
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if !viewHasAppeared {
             viewHasAppeared = true
-            client.start(withSyncCode: syncCode, safeAreaY: view.safeAreaInsets.top)
+            client?.start(withSyncCode: syncCode, safeAreaY: view.safeAreaInsets.top)
             UIView.animate(withDuration: 0.5) {
                 self.activityView.alpha = 1.0
                 self.navigationController?.navigationBar.alpha = 1.0
@@ -115,21 +115,21 @@ class RPPTController: UIViewController {
     // MARK: - Setup
 
     private func setupClient() {
-        client.onTaskUpdated = { [weak self] task in
+        client?.onTaskUpdated = { [weak self] task in
             self?.task = task
         }
 
-        client.onLocationUpdated = { [weak self] location in
+        client?.onLocationUpdated = { [weak self] location in
             let mapSpan = MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015)
             let mapCoordinateRegion = MKCoordinateRegion(center: location, span: mapSpan)
             self?.mapView.region = mapCoordinateRegion
         }
 
-        client.onClientError = { error in
+        client?.onClientError = { error in
             print(error)
         }
 
-        client.onOpenTokError = { [weak self] error in
+        client?.onOpenTokError = { [weak self] error in
             print(error)
             if let controller = self?.presentedViewController {
                 controller.dismiss(animated: true, completion: {
@@ -142,7 +142,7 @@ class RPPTController: UIViewController {
             }
         }
 
-        client.onSubscriberConnected = { [weak self] subscriberView in
+        client?.onSubscriberConnected = { [weak self] subscriberView in
             guard let view = self?.view else { return }
 
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -378,10 +378,8 @@ class RPPTController: UIViewController {
         }
 
         canSendTouches = false
-
-        // TODO: WHY DOES THIS EXIST
         for point in points {
-            client.createTap(scaledX: point.x, scaledY: point.y)
+            client?.createTap(scaledX: point.x, scaledY: point.y)
         }
 
         touchDelay = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false, block: { _ in
@@ -411,7 +409,7 @@ extension RPPTController: UITextViewDelegate {
 
     func textViewDidChange(_ textView: UITextView) {
         guard textView.text.last == "\n" else { return }
-        client.sendMessage(text: textView.text)
+        client?.sendMessage(text: textView.text)
         textView.text = ""
     }
 }

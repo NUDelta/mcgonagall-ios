@@ -38,7 +38,6 @@ class RPPTFinalFlowViewController: RPPTFlowViewController {
     }
 
     override func continueButtonPressed() {
-        RPPTClient.shared.connectWebSocket()
         UserDefaults.standard.set(true, forKey: "SetupComplete")
         navigationController?.dismiss(animated: true, completion: nil)
     }

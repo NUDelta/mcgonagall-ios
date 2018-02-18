@@ -11,10 +11,4 @@ import UIKit
 @UIApplicationMain
 class RPPTAppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
-
-    func applicationDidFinishLaunching(_ application: UIApplication) {
-        if UserDefaults.standard.bool(forKey: "SetupComplete") {
-            RPPTClient.shared.connectWebSocket()
-        }
-    }
 }
