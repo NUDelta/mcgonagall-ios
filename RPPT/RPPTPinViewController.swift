@@ -199,7 +199,11 @@ class RPPTPinViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         titleLabel.text = "Connecting"
 
         RPPTClient.shared = RPPTClient(endpoint: endPoint, ready: {
-            self.performSegue(withIdentifier: "connect", sender: pin)
+            DispatchQueue.main.async {
+                if self.navigationController?.viewControllers.count == 1 {
+                     self.performSegue(withIdentifier: "connect", sender: pin)
+                }
+            }
         })
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {

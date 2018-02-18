@@ -38,6 +38,10 @@ int const PreferredFPS = 30;
         // Recommend sending 5 frames per second: Allows for higher image
         // quality per frame
 
+        [[NSNotificationCenter defaultCenter] addObserverForName: @"StopRecording" object:NULL queue:NULL usingBlock:^(NSNotification * _Nonnull note) {
+            [self stopCapture];
+        }];
+
         queue = [[NSOperationQueue alloc] init];
         [queue setMaxConcurrentOperationCount:1];
 
@@ -46,6 +50,7 @@ int const PreferredFPS = 30;
 
         _videoFrame = [[OTVideoFrame alloc] initWithFormat:format];
 
+        __weak RPPTScreenCapturer *weakSelf = self;
         [[RPScreenRecorder sharedRecorder] startCaptureWithHandler:^(CMSampleBufferRef  _Nonnull sampleBuffer, RPSampleBufferType bufferType, NSError * _Nullable error) {
 
             if (_shouldCaptureFrame && !_isCapturingFrame) {
@@ -59,7 +64,7 @@ int const PreferredFPS = 30;
                     VTCreateCGImageFromCVPixelBuffer(ref, NULL, &imageRef);
                     if (imageRef != NULL) {
                         [queue addOperationWithBlock:^{
-                            [self consumeFrame:imageRef];
+                            [weakSelf consumeFrame:imageRef];
                         }];
                     }
                 }
@@ -77,6 +82,7 @@ int const PreferredFPS = 30;
 - (void)dealloc
 {
     [self stopCapture];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     CVPixelBufferRelease(_pixelBuffer);
 }
 
@@ -157,10 +163,18 @@ int const PreferredFPS = 30;
     _capturing = NO;
 
     [displayLink setPaused:true];
+    [queue setMaxConcurrentOperationCount:0];
 
     [[RPScreenRecorder sharedRecorder] stopCaptureWithHandler:^(NSError * _Nullable error) {
-
+        [queue cancelAllOperations];
     }];
+
+    [displayLink removeFromRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+
+    [displayLink invalidate];
+    displayLink = nil;
+
+       [[NSNotificationCenter defaultCenter] removeObserver:self];
 
     return 0;
 }

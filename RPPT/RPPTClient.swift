@@ -46,9 +46,13 @@ class RPPTClient {
             UIApplication.shared.isIdleTimerDisabled = true
         }
 
+        var isReady = false
         NotificationCenter.default.addObserver(forName: .MeteorClientConnectionReady, object: nil, queue: nil) { _ in
             print("RPPTClient: MeteorClientConnectionReady")
-            ready()
+            if !isReady {
+                isReady = true
+                ready()
+            }
         }
 
         NotificationCenter.default.addObserver(forName: .MeteorClientDidDisconnect, object: nil, queue: nil) { _ in
@@ -67,6 +71,8 @@ class RPPTClient {
 
     func disconnect() {
         client.ddp.disconnectWebSocket()
+
+        NotificationCenter.default.post(name: NSNotification.Name(rawValue: "StopRecording"), object: nil)
     }
 
     func start(withSyncCode syncCode: String, safeAreaY: CGFloat) {
