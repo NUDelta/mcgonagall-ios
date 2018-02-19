@@ -70,7 +70,7 @@ class RPPTController: UIViewController {
         navigationController?.navigationBar.alpha = 0.0
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidShow, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: .UIKeyboardDidShow, object: nil, queue: nil) { notification in
             guard let userInfo = notification.userInfo else {return}
 
             if let myData = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect {
@@ -88,15 +88,11 @@ class RPPTController: UIViewController {
             }
         }
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { _ in
+        NotificationCenter.default.addObserver(forName: .UIKeyboardDidHide, object: nil, queue: nil) { _ in
             DispatchQueue.main.async {
                 self.keyboardViewLabel?.removeFromSuperview()
             }
         }
-    }
-
-    func key() {
-
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -109,6 +105,10 @@ class RPPTController: UIViewController {
                 self.navigationController?.navigationBar.alpha = 1.0
             }
         }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Setup
@@ -144,10 +144,8 @@ class RPPTController: UIViewController {
         client.onSubscriberConnected = { [weak self] subscriberView in
             guard let view = self?.view else { return }
 
-//    \        UINotificationFeedbackGenerator().notificationOccurred(.success)
-
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             subscriberView.translatesAutoresizingMaskIntoConstraints = false
-//            subscriberView.transform = CGAffineTransform(scaleX: -1, y: 1)
             self?.view.addSubview(subscriberView)
 
             let constraints = [
@@ -189,7 +187,7 @@ class RPPTController: UIViewController {
 
     // MARK: - Comms
 
-    // TODO: THIS
+    // TODO: Refactor
     @objc func messageChanged(notification: NSNotification) {
         guard let result = notification.userInfo as? [String:String] else { return }
 
@@ -330,14 +328,15 @@ class RPPTController: UIViewController {
         self.view.bringSubview(toFront: overlayedImageView)
     }
 
-    // TODO: Fix
+    // TODO: Make better
     //swiftlint:disable:next identifier_name
     func overlayImage(x: CGFloat, y: CGFloat, height: CGFloat, width: CGFloat, imageEncoding: String, isCameraOverlay: Bool) {
-        let dataDecoded = Data(base64Encoded: imageEncoding, options: .ignoreUnknownCharacters)
-        let decodedimage = UIImage(data: dataDecoded!)
-        overlayedImageView.image = decodedimage
+        guard let dataDecoded = Data(base64Encoded: imageEncoding, options: .ignoreUnknownCharacters) else {
+            return
+        }
+        overlayedImageView.image = UIImage(data: dataDecoded)
         overlayedImageView.frame = CGRect(x: x, y: y, width: width, height: height)
-        if (isCameraOverlay) {
+        if isCameraOverlay {
             self.cameraController?.cameraOverlayView = overlayedImageView
         } else {
             self.view.addSubview(overlayedImageView)
@@ -372,7 +371,7 @@ class RPPTController: UIViewController {
         sendTaps(points: taps)
     }
 
-    // TODO: Fix
+    // TODO: Fix delay
     //swiftlint:disable:next identifier_name
     func sendTaps(points: [CGPoint]) {
 
@@ -382,7 +381,6 @@ class RPPTController: UIViewController {
 
         canSendTouches = false
 
-        // TODO: WHY DOES THIS EXIST
         for point in points {
             client.createTap(scaledX: point.x, scaledY: point.y)
         }

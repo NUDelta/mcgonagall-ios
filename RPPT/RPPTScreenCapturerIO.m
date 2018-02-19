@@ -10,11 +10,15 @@
 #include <mach/mach_time.h>
 
 #import "RPPTScreenCapturerIO.h"
-#import "Capturer.h"
-
 #import "RPPT-Swift.h"
 
 int const PreferredFPS = 10;
+
+@interface UIWindow (Private)
+- (IOSurfaceRef)createIOSurface;
+@end
+
+CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef ioSurface);
 
 @implementation RPPTScreenCapturer {
     NSTimer *timer;
@@ -111,13 +115,15 @@ int const PreferredFPS = 10;
 }
 
 -(void)shouldCaptureFrame {
-    NSLog(@"%lu", (unsigned long)queue.operationCount);
     if (queue.operationCount > 10) {
         NSLog(@"This is very bad");
         [queue cancelAllOperations];
     }
     [queue addOperationWithBlock:^{
-        [self consumeFrame:[Capturer captureFrame: window]];
+        IOSurfaceRef surface = [window createIOSurface];
+        CGImageRef ref = UICreateCGImageFromIOSurface(surface);
+        CFRelease(surface);
+        [self consumeFrame: ref];
     }];
 }
 
@@ -274,8 +280,8 @@ int const PreferredFPS = 10;
 }
 
 - (void) consumeFrame:(CGImageRef)sourceCGImage {
-    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage);
-    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage);
+    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage) * 0.5;
+    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage) * 0.5;
     CGSize sourceSize = CGSizeMake(sourceWidth, sourceHeight);
     CGSize destContainerSize = CGSizeZero;
     CGRect destRectForSourceImage = CGRectZero;
@@ -286,19 +292,19 @@ int const PreferredFPS = 10;
 
     CGImageRef frame = NULL;
     @autoreleasepool {
-        UIGraphicsBeginImageContextWithOptions(destContainerSize, NO, 1.0);
-        CGContextRef context = UIGraphicsGetCurrentContext();
+        CGContextRef context = CGBitmapContextCreate(nil,
+                                                     destContainerSize.width,
+                                                     destContainerSize.height,
+                                                     CGImageGetBitsPerComponent(sourceCGImage),
+                                                     CGImageGetBytesPerRow(sourceCGImage),
+                                                     CGImageGetColorSpace(sourceCGImage),
+                                                     CGImageGetBitmapInfo(sourceCGImage));
 
-        // flip source image to match destination coordinate system
-        CGContextScaleCTM(context, 1.0, -1.0);
-        CGContextTranslateCTM(context, 0, -destRectForSourceImage.size.height);
+        CGContextSetInterpolationQuality(context, kCGInterpolationNone);
         CGContextDrawImage(context, destRectForSourceImage, sourceCGImage);
 
-        // Clean up and get the new image.
-        UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        frame = CGImageCreateCopy([newImage CGImage]);
-        newImage = NULL;
+        frame = CGBitmapContextCreateImage(context);
+        CGContextRelease(context);
     }
     CGImageRelease(sourceCGImage);
 

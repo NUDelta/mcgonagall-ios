@@ -125,6 +125,8 @@ class RPPTCameraViewController: UIViewController {
         guard let captureDevice = deviceDiscoverySession.devices.first else {
             fatalError()
         }
+        
+        captureDevice.activeVideoMaxFrameDuration = captureDevice.activeFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
 
         do {
             let input = try AVCaptureDeviceInput(device: captureDevice)
