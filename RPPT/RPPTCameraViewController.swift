@@ -80,7 +80,7 @@ class RPPTCameraViewController: UIViewController {
     var cameraOverlayView: UIView? {
         didSet {
             if let newView = cameraOverlayView {
-                arImageView.isHidden = true
+                arImageView.isHidden = false
                 captureButtonView.isHidden = true
                 view.addSubview(newView)
             }
