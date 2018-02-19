@@ -25,7 +25,7 @@ class RPPTController: UIViewController {
     let imageView = UIImageView()
     let overlayedImageView = UIImageView()
 
-    var picker: UIImagePickerController?
+    var cameraController: RPPTCameraViewController?
 
     // MARK: - Properties
 
@@ -33,7 +33,7 @@ class RPPTController: UIViewController {
         didSet {
             if let task = task {
                 title = task.content
-                AudioServicesPlaySystemSound(1003)
+//                AudioServicesPlaySystemSound(1003)
             }
         }
     }
@@ -145,7 +145,7 @@ class RPPTController: UIViewController {
         client.onSubscriberConnected = { [weak self] subscriberView in
             guard let view = self?.view else { return }
 
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+//    \        UINotificationFeedbackGenerator().notificationOccurred(.success)
 
             subscriberView.translatesAutoresizingMaskIntoConstraints = false
 //            subscriberView.transform = CGAffineTransform(scaleX: -1, y: 1)
@@ -185,7 +185,7 @@ class RPPTController: UIViewController {
         alertController.addAction(action)
         present(alertController, animated: true, completion: nil)
 
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+//        UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     // MARK: - Comms
@@ -201,35 +201,40 @@ class RPPTController: UIViewController {
             self.task = RPPTTask(content: content, messageID: taskID)
         }
 
-        // temp hijacking
         if result["keyboard"] == "show" {
             // Where do these numbers come from
-            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
+            textView.frame = CGRect(x: 50,
+                                    y: self.view.frame.height - 256,
+                                    width: self.view.frame.width - 10,
+                                    height: 40)
             self.view.addSubview(textView)
             self.textView.becomeFirstResponder()
-
-
-
         } else if result["keyboard"] == "hide" {
             self.textView.resignFirstResponder()
             self.textView.removeFromSuperview()
         }
 
         if result["camera"] == "show" {
-            if picker == nil {
-                picker = UIImagePickerController()
-                picker?.sourceType = .camera
-                picker?.mediaTypes = [kUTTypeImage as String]
-                picker?.delegate = self
-
-                if let picker = picker {
+            if cameraController == nil {
+                cameraController = RPPTCameraViewController()
+                cameraController?.imageCaptured = { [weak self] image in
+                    self?.photoArray.append(image)
+                    if self?.cameraController != nil {
+                        self?.cameraController?.dismiss(animated: true, completion: nil)
+                        self?.cameraController = nil
+                    }
+                }
+                cameraController?.didTap = { [weak self] taps in
+                    self?.sendTaps(points: taps)
+                }
+                if let picker = cameraController {
                     present(picker, animated: true, completion: nil)
                 }
             }
         } else if result["camera"] == "hide" {
-            if picker != nil {
-                picker?.dismiss(animated: true, completion: nil)
-                picker = nil
+            if cameraController != nil {
+                cameraController?.dismiss(animated: true, completion: nil)
+                cameraController = nil
             }
         }
 
@@ -334,8 +339,7 @@ class RPPTController: UIViewController {
         overlayedImageView.image = decodedimage
         overlayedImageView.frame = CGRect(x: x, y: y, width: width, height: height)
         if (isCameraOverlay) {
-            picker?.showsCameraControls = false
-            picker?.cameraOverlayView = overlayedImageView
+            self.cameraController?.cameraOverlayView = overlayedImageView
         } else {
             self.view.addSubview(overlayedImageView)
             self.view.bringSubview(toFront: overlayedImageView)
@@ -389,20 +393,6 @@ class RPPTController: UIViewController {
         })
     }
 
-}
-
-extension RPPTController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-
-    // MARK: - UIImagePickerController Delegate
-
-    func imagePickerController(_ picker: UIImagePickerController,
-                               didFinishPickingMediaWithInfo info: [String : Any]) {
-        guard let image = info[UIImagePickerControllerOriginalImage] as? UIImage else {
-            fatalError("Failed to get image from image picker.")
-        }
-        photoArray.append(image)
-        picker.dismiss(animated: true, completion: nil)
-    }
 }
 
 extension RPPTController: UITextViewDelegate {

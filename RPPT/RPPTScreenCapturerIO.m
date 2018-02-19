@@ -10,22 +10,21 @@
 #include <mach/mach_time.h>
 
 #import "RPPTScreenCapturerIO.h"
-#import <ReplayKit/ReplayKit.h>
-@import VideoToolbox;
+#import "Capturer.h"
 
-int const PreferredFPS = 30;
+#import "RPPT-Swift.h"
+
+int const PreferredFPS = 10;
 
 @implementation RPPTScreenCapturer {
-    CADisplayLink *displayLink;
+    NSTimer *timer;
 
     CVPixelBufferRef _pixelBuffer;
     BOOL _capturing;
     OTVideoFrame* _videoFrame;
 
-    BOOL _shouldCaptureFrame;
-    BOOL _isCapturingFrame;
-
     NSOperationQueue *queue;
+    UIWindow *window;
 }
 
 @synthesize videoCaptureConsumer;
@@ -38,37 +37,15 @@ int const PreferredFPS = 30;
         // Recommend sending 5 frames per second: Allows for higher image
         // quality per frame
 
+        window = [(RPPTAppDelegate *)[[UIApplication sharedApplication] delegate] window];
+
         queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
+        [queue setMaxConcurrentOperationCount: 2];
 
         OTVideoFormat *format = [[OTVideoFormat alloc] init];
         [format setPixelFormat:OTPixelFormatARGB];
 
         _videoFrame = [[OTVideoFrame alloc] initWithFormat:format];
-
-        [[RPScreenRecorder sharedRecorder] startCaptureWithHandler:^(CMSampleBufferRef  _Nonnull sampleBuffer, RPSampleBufferType bufferType, NSError * _Nullable error) {
-
-            if (_shouldCaptureFrame && !_isCapturingFrame) {
-                _isCapturingFrame = true;
-
-                CVImageBufferRef ref = CMSampleBufferGetImageBuffer(sampleBuffer);
-                if (ref != NULL) {
-                    // Don't need another frame (until set to true by next timer tick)
-                    _shouldCaptureFrame = false;
-                    CGImageRef imageRef = NULL;
-                    VTCreateCGImageFromCVPixelBuffer(ref, NULL, &imageRef);
-                    if (imageRef != NULL) {
-                        [queue addOperationWithBlock:^{
-                            [self consumeFrame:imageRef];
-                        }];
-                    }
-                }
-                ref = NULL;
-                // Ok to capture another frame
-                _isCapturingFrame = false;
-            }
-
-        } completionHandler: nil];
     }
 
     return self;
@@ -130,24 +107,27 @@ int const PreferredFPS = 30;
  * block to execute periodically to send video frames.
  */
 - (void)initCapture {
-    displayLink = [[UIScreen mainScreen] displayLinkWithTarget:self selector:@selector(shouldCaptureFrame)];
-    [displayLink setPreferredFramesPerSecond: PreferredFPS];
-    [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    timer = [NSTimer scheduledTimerWithTimeInterval:1.0 / PreferredFPS target:self selector:@selector(shouldCaptureFrame) userInfo:nil repeats:true];
 }
 
 -(void)shouldCaptureFrame {
-    _shouldCaptureFrame = true;
+    NSLog(@"%lu", (unsigned long)queue.operationCount);
+    if (queue.operationCount > 10) {
+        NSLog(@"This is very bad");
+        [queue cancelAllOperations];
+    }
+    [queue addOperationWithBlock:^{
+        [self consumeFrame:[Capturer captureFrame: window]];
+    }];
 }
 
 - (void)releaseCapture {
-    displayLink = nil;
+    timer = nil;
 }
 
 - (int32_t)startCapture
 {
     _capturing = YES;
-
-    [displayLink setPaused:false];
 
     return 0;
 }
@@ -156,7 +136,7 @@ int const PreferredFPS = 30;
 {
     _capturing = NO;
 
-    [displayLink setPaused:true];
+    [timer invalidate];
 
     return 0;
 }
