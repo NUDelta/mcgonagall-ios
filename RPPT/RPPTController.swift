@@ -48,7 +48,6 @@ class RPPTController: UIViewController {
     var photoArray = [UIImage]()
     var keyboardViewLabel: UILabel?
 
-
     // MARK: - View Life Cycle
 
     override func viewDidLoad() {
@@ -89,7 +88,7 @@ class RPPTController: UIViewController {
             }
         }
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { _ in
             DispatchQueue.main.async {
                 self.keyboardViewLabel?.removeFromSuperview()
             }

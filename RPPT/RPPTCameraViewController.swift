@@ -20,7 +20,11 @@ private class CaptureButton: UIButton {
 
 private class CaptureButtonView: UIView {
 
-    var buttonPressed: (() -> ())?
+    // MARK: - Properties
+
+    var buttonPressed: (() -> Void)?
+
+    // MARK: - Initalization
 
     init() {
         super.init(frame: .zero)
@@ -48,6 +52,8 @@ private class CaptureButtonView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // MARK: - Other
+
     @objc
     func captureButtonPressed() {
         buttonPressed?()
@@ -57,8 +63,10 @@ private class CaptureButtonView: UIView {
 
 class RPPTCameraViewController: UIViewController {
 
-    var imageCaptured: ((UIImage) -> ())?
-    var didTap: (([CGPoint]) -> ())?
+    // MARK: - Properties
+
+    var didTap: (([CGPoint]) -> Void)?
+    var imageCaptured: ((UIImage) -> Void)?
 
     private let sessionQueue = DispatchQueue(label: "session queue", attributes: [], target: nil)
 
@@ -66,22 +74,31 @@ class RPPTCameraViewController: UIViewController {
     private var previewLayer: AVCaptureVideoPreviewLayer?
 
     private let imageView = UIImageView()
+    private let arImageView = UIImageView()
     private let captureButtonView = CaptureButtonView()
 
     var cameraOverlayView: UIView? {
         didSet {
             if let newView = cameraOverlayView {
+                arImageView.isHidden = true
                 captureButtonView.isHidden = true
                 view.addSubview(newView)
             }
         }
     }
 
+    // MARK: - View Life Cycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         imageView.frame = view.frame
         view.addSubview(imageView)
+
+        arImageView.image = #imageLiteral(resourceName: "ARKit-Badge")
+        arImageView.isHidden = false
+        arImageView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(arImageView)
 
         captureButtonView.buttonPressed = { [weak self] in
             self?.captureButtonPressed()
@@ -92,7 +109,12 @@ class RPPTCameraViewController: UIViewController {
             captureButtonView.centerXAnchor.constraint(equalTo: view.centerXAnchor, constant: 0),
             captureButtonView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             captureButtonView.widthAnchor.constraint(equalToConstant: 80.0),
-            captureButtonView.heightAnchor.constraint(equalToConstant: 80.0)
+            captureButtonView.heightAnchor.constraint(equalToConstant: 80.0),
+
+            arImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor, constant: 0),
+            arImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            arImageView.widthAnchor.constraint(equalToConstant: 81.0),
+            arImageView.heightAnchor.constraint(equalToConstant: 42.0)
         ]
         NSLayoutConstraint.activate(constraints)
 
@@ -114,7 +136,6 @@ class RPPTCameraViewController: UIViewController {
 
             captureSession.addOutput(videoOutput)
             videoOutput.connection(with: .video)?.videoOrientation = .portrait
-
         } catch {
             print(error)
             return
@@ -127,6 +148,8 @@ class RPPTCameraViewController: UIViewController {
         super.viewDidDisappear(animated)
         captureSession.stopRunning()
     }
+
+    // MARK: - User Interaction
 
     func captureButtonPressed() {
         guard let image = imageView.image else {
@@ -153,13 +176,15 @@ class RPPTCameraViewController: UIViewController {
 
 extension RPPTCameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
 
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    func captureOutput(_ output: AVCaptureOutput,
+                       didOutput sampleBuffer: CMSampleBuffer,
+                       from connection: AVCaptureConnection) {
+
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
 
         var imageFromBuffer: CGImage?
-
         VTCreateCGImageFromCVPixelBuffer(pixelBuffer, nil, &imageFromBuffer)
 
         guard let cgImage = imageFromBuffer else {
@@ -173,4 +198,3 @@ extension RPPTCameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate
     }
 
 }
-
