@@ -216,10 +216,7 @@ class RPPTController: UIViewController {
                 cameraController = RPPTCameraViewController()
                 cameraController?.imageCaptured = { [weak self] image in
                     self?.photoArray.append(image)
-                    if self?.cameraController != nil {
-                        self?.cameraController?.dismiss(animated: true, completion: nil)
-                        self?.cameraController = nil
-                    }
+                    self?.client.sendMessage(text: "[Camera]: Picture Taken")
                 }
                 cameraController?.didTap = { [weak self] taps in
                     self?.sendTaps(points: taps)
@@ -398,7 +395,7 @@ extension RPPTController: UITextViewDelegate {
 
     func textViewDidChange(_ textView: UITextView) {
         guard textView.text.last == "\n" else { return }
-        client.sendMessage(text: textView.text)
+        client.sendMessage(text: "[Keyboard]: \"\(textView.text)\"")
         textView.text = ""
     }
 }
