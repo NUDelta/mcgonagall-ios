@@ -96,7 +96,7 @@ class RPPTCameraViewController: UIViewController {
         view.addSubview(imageView)
 
         arImageView.image = #imageLiteral(resourceName: "ARKit-Badge")
-        arImageView.isHidden = false
+        arImageView.isHidden = true
         arImageView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(arImageView)
 
