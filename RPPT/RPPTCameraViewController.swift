@@ -75,6 +75,8 @@ class RPPTCameraViewController: UIViewController {
 
     private let imageView = UIImageView()
     private let arImageView = UIImageView()
+
+    private let flipButton = UIButton()
     private let captureButtonView = CaptureButtonView()
 
     var cameraOverlayView: UIView? {
@@ -105,6 +107,12 @@ class RPPTCameraViewController: UIViewController {
         }
         view.addSubview(captureButtonView)
 
+        flipButton.translatesAutoresizingMaskIntoConstraints = false
+        flipButton.setTitle("FLIP", for: .normal)
+        flipButton.titleLabel?.font = UIFont.systemFont(ofSize: 22.0, weight: .semibold)
+        flipButton.addTarget(self, action: #selector(swapCamera), for: .touchUpInside)
+        view.addSubview(flipButton)
+
         let constraints = [
             captureButtonView.centerXAnchor.constraint(equalTo: view.centerXAnchor, constant: 0),
             captureButtonView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
@@ -114,7 +122,11 @@ class RPPTCameraViewController: UIViewController {
             arImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor, constant: 0),
             arImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             arImageView.widthAnchor.constraint(equalToConstant: 81.0),
-            arImageView.heightAnchor.constraint(equalToConstant: 42.0)
+            arImageView.heightAnchor.constraint(equalToConstant: 42.0),
+
+            flipButton.leftAnchor.constraint(equalTo: captureButtonView.rightAnchor, constant: 0),
+            flipButton.rightAnchor.constraint(equalTo: view.rightAnchor, constant: 0),
+            flipButton.centerYAnchor.constraint(equalTo: captureButtonView.centerYAnchor, constant: 0)
         ]
         NSLayoutConstraint.activate(constraints)
 
@@ -159,6 +171,31 @@ class RPPTCameraViewController: UIViewController {
         }
         UIImpactFeedbackGenerator().impactOccurred()
         imageCaptured?(image)
+    }
+
+    @objc
+    func swapCamera() {
+        guard let currentInput = captureSession.inputs.first as? AVCaptureDeviceInput else { return }
+
+        captureSession.beginConfiguration()
+        defer { captureSession.commitConfiguration() }
+
+        let currentIsFront = currentInput.device.position == .front
+        let newPosition: AVCaptureDevice.Position = currentIsFront ? .back : .front
+
+        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera],
+                                                                      mediaType: .video,
+                                                                      position: newPosition)
+
+        guard let captureDevice = deviceDiscoverySession.devices.first,
+            let deviceInput = try? AVCaptureDeviceInput(device: captureDevice) else {
+                fatalError()
+        }
+
+        captureSession.removeInput(currentInput)
+        captureSession.addInput(deviceInput)
+        captureSession.outputs.first?.connection(with: .video)?.videoOrientation = .portrait
+        captureSession.outputs.first?.connection(with: .video)?.isVideoMirrored = !currentIsFront
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
