@@ -14,6 +14,26 @@
 
 int const PreferredFPS = 10;
 
+/** Inversely related to performance
+
+ Lab iPhone Perf:
+
+ 10 FPS:
+
+ 0.5 = 95% CPU;
+ 0.75 = 110% CPU;
+ 1.0 = 130% CPU; [Queue droping frames];
+
+ 20 FPS:
+
+ 0.5 = 140% CPU;
+ 0.75 = 145% CPU;  [Queue droping significant amount of frames];
+ 1.0 = 150% CPU; [Queue droping significant amount of frames];
+
+ */
+
+double const QualityFactor = 0.5;
+
 @interface UIWindow (Private)
 - (IOSurfaceRef)createIOSurface;
 @end
@@ -116,7 +136,7 @@ CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef ioSurface);
 
 -(void)shouldCaptureFrame {
     if (queue.operationCount > 10) {
-        NSLog(@"This is very bad");
+        NSLog(@"Queue dropping frames");
         [queue cancelAllOperations];
     }
     [queue addOperationWithBlock:^{
@@ -280,8 +300,8 @@ CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef ioSurface);
 }
 
 - (void) consumeFrame:(CGImageRef)sourceCGImage {
-    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage) * 0.5;
-    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage) * 0.5;
+    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage) * QualityFactor;
+    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage) * QualityFactor;
     CGSize sourceSize = CGSizeMake(sourceWidth, sourceHeight);
     CGSize destContainerSize = CGSizeZero;
     CGRect destRectForSourceImage = CGRectZero;

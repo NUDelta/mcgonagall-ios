@@ -130,7 +130,7 @@ class RPPTCameraViewController: UIViewController {
         ]
         NSLayoutConstraint.activate(constraints)
 
-        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInDualCamera],
+        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
                                                                       mediaType: AVMediaType.video,
                                                                       position: .back)
 
@@ -183,7 +183,7 @@ class RPPTCameraViewController: UIViewController {
         let currentIsFront = currentInput.device.position == .front
         let newPosition: AVCaptureDevice.Position = currentIsFront ? .back : .front
 
-        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera],
+        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
                                                                       mediaType: .video,
                                                                       position: newPosition)
 
