@@ -67,6 +67,10 @@ class RPPTClient {
         client.ddp.connectWebSocket()
     }
 
+    func disconnect() {
+        sessionManager.disconnect()
+    }
+
     func start(withSyncCode syncCode: String, safeAreaY: CGFloat) {
         self.syncCode = syncCode
 
@@ -104,7 +108,12 @@ class RPPTClient {
                 self.sessionManager.connect(withProperties: properties) { error in
                     print("Failed to connect with error: \(String(describing: error))")
 
-                    let parameters: [Any] = [self.syncCode, UIScreen.main.bounds.width, UIScreen.main.bounds.height, safeAreaY]
+                    let parameters: [Any] = [
+                        self.syncCode as Any,
+                        UIScreen.main.bounds.width,
+                        UIScreen.main.bounds.height,
+                        safeAreaY
+                    ]
 
                     self.client.callMethodName("setStreamSize",
                                                parameters: parameters,

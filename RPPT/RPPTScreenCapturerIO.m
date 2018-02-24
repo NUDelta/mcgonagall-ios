@@ -10,22 +10,46 @@
 #include <mach/mach_time.h>
 
 #import "RPPTScreenCapturerIO.h"
-#import <ReplayKit/ReplayKit.h>
-@import VideoToolbox;
+#import "RPPT-Swift.h"
 
-int const PreferredFPS = 30;
+int const PreferredFPS = 10;
+double const QualityFactor = 0.5;
+
+/**
+
+ Lab iPhone 6 Perf (queue max = 2):
+
+ 10 FPS:
+
+ 0.5 = 95% CPU;
+ 0.75 = 110% CPU;
+ 1.0 = 130% CPU; [Queue droping frames];
+
+ 20 FPS:
+
+ 0.5 = 140% CPU;
+ 0.75 = 145% CPU;  [Queue droping significant amount of frames];
+ 1.0 = 150% CPU; [Queue droping significant amount of frames];
+
+ */
+
+
+
+@interface UIWindow (Private)
+- (IOSurfaceRef)createIOSurface;
+@end
+
+CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef ioSurface);
 
 @implementation RPPTScreenCapturer {
-    CADisplayLink *displayLink;
+    NSTimer *timer;
 
     CVPixelBufferRef _pixelBuffer;
     BOOL _capturing;
     OTVideoFrame* _videoFrame;
 
-    BOOL _shouldCaptureFrame;
-    BOOL _isCapturingFrame;
-
     NSOperationQueue *queue;
+    UIWindow *window;
 }
 
 @synthesize videoCaptureConsumer;
@@ -38,37 +62,15 @@ int const PreferredFPS = 30;
         // Recommend sending 5 frames per second: Allows for higher image
         // quality per frame
 
+        window = [(RPPTAppDelegate *)[[UIApplication sharedApplication] delegate] window];
+
         queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
+        [queue setMaxConcurrentOperationCount: 2];
 
         OTVideoFormat *format = [[OTVideoFormat alloc] init];
         [format setPixelFormat:OTPixelFormatARGB];
 
         _videoFrame = [[OTVideoFrame alloc] initWithFormat:format];
-
-        [[RPScreenRecorder sharedRecorder] startCaptureWithHandler:^(CMSampleBufferRef  _Nonnull sampleBuffer, RPSampleBufferType bufferType, NSError * _Nullable error) {
-
-            if (_shouldCaptureFrame && !_isCapturingFrame) {
-                _isCapturingFrame = true;
-
-                CVImageBufferRef ref = CMSampleBufferGetImageBuffer(sampleBuffer);
-                if (ref != NULL) {
-                    // Don't need another frame (until set to true by next timer tick)
-                    _shouldCaptureFrame = false;
-                    CGImageRef imageRef = NULL;
-                    VTCreateCGImageFromCVPixelBuffer(ref, NULL, &imageRef);
-                    if (imageRef != NULL) {
-                        [queue addOperationWithBlock:^{
-                            [self consumeFrame:imageRef];
-                        }];
-                    }
-                }
-                ref = NULL;
-                // Ok to capture another frame
-                _isCapturingFrame = false;
-            }
-
-        } completionHandler: nil];
     }
 
     return self;
@@ -130,24 +132,29 @@ int const PreferredFPS = 30;
  * block to execute periodically to send video frames.
  */
 - (void)initCapture {
-    displayLink = [[UIScreen mainScreen] displayLinkWithTarget:self selector:@selector(shouldCaptureFrame)];
-    [displayLink setPreferredFramesPerSecond: PreferredFPS];
-    [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    timer = [NSTimer scheduledTimerWithTimeInterval:1.0 / PreferredFPS target:self selector:@selector(shouldCaptureFrame) userInfo:nil repeats:true];
 }
 
 -(void)shouldCaptureFrame {
-    _shouldCaptureFrame = true;
+    if (queue.operationCount > 10) {
+        NSLog(@"Queue dropping frames");
+        [queue cancelAllOperations];
+    }
+    [queue addOperationWithBlock:^{
+        IOSurfaceRef surface = [window createIOSurface];
+        CGImageRef ref = UICreateCGImageFromIOSurface(surface);
+        CFRelease(surface);
+        [self consumeFrame: ref];
+    }];
 }
 
 - (void)releaseCapture {
-    displayLink = nil;
+    timer = nil;
 }
 
 - (int32_t)startCapture
 {
     _capturing = YES;
-
-    [displayLink setPaused:false];
 
     return 0;
 }
@@ -156,7 +163,7 @@ int const PreferredFPS = 30;
 {
     _capturing = NO;
 
-    [displayLink setPaused:true];
+    [timer invalidate];
 
     return 0;
 }
@@ -294,8 +301,8 @@ int const PreferredFPS = 30;
 }
 
 - (void) consumeFrame:(CGImageRef)sourceCGImage {
-    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage);
-    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage);
+    CGFloat sourceWidth = CGImageGetWidth(sourceCGImage) * QualityFactor;
+    CGFloat sourceHeight = CGImageGetHeight(sourceCGImage) * QualityFactor;
     CGSize sourceSize = CGSizeMake(sourceWidth, sourceHeight);
     CGSize destContainerSize = CGSizeZero;
     CGRect destRectForSourceImage = CGRectZero;
@@ -306,19 +313,19 @@ int const PreferredFPS = 30;
 
     CGImageRef frame = NULL;
     @autoreleasepool {
-        UIGraphicsBeginImageContextWithOptions(destContainerSize, NO, 1.0);
-        CGContextRef context = UIGraphicsGetCurrentContext();
+        CGContextRef context = CGBitmapContextCreate(nil,
+                                                     destContainerSize.width,
+                                                     destContainerSize.height,
+                                                     CGImageGetBitsPerComponent(sourceCGImage),
+                                                     CGImageGetBytesPerRow(sourceCGImage),
+                                                     CGImageGetColorSpace(sourceCGImage),
+                                                     CGImageGetBitmapInfo(sourceCGImage));
 
-        // flip source image to match destination coordinate system
-        CGContextScaleCTM(context, 1.0, -1.0);
-        CGContextTranslateCTM(context, 0, -destRectForSourceImage.size.height);
+        CGContextSetInterpolationQuality(context, kCGInterpolationNone);
         CGContextDrawImage(context, destRectForSourceImage, sourceCGImage);
 
-        // Clean up and get the new image.
-        UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        frame = CGImageCreateCopy([newImage CGImage]);
-        newImage = NULL;
+        frame = CGBitmapContextCreateImage(context);
+        CGContextRelease(context);
     }
     CGImageRelease(sourceCGImage);
 

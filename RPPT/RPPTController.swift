@@ -25,7 +25,7 @@ class RPPTController: UIViewController {
     let imageView = UIImageView()
     let overlayedImageView = UIImageView()
 
-    var picker: UIImagePickerController?
+    var cameraController: RPPTCameraViewController?
 
     // MARK: - Properties
 
@@ -33,7 +33,7 @@ class RPPTController: UIViewController {
         didSet {
             if let task = task {
                 title = task.content
-                AudioServicesPlaySystemSound(1003)
+//                AudioServicesPlaySystemSound(1003)
             }
         }
     }
@@ -47,7 +47,6 @@ class RPPTController: UIViewController {
 
     var photoArray = [UIImage]()
     var keyboardViewLabel: UILabel?
-
 
     // MARK: - View Life Cycle
 
@@ -71,7 +70,7 @@ class RPPTController: UIViewController {
         navigationController?.navigationBar.alpha = 0.0
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidShow, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: .UIKeyboardDidShow, object: nil, queue: nil) { notification in
             guard let userInfo = notification.userInfo else {return}
 
             if let myData = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect {
@@ -89,15 +88,11 @@ class RPPTController: UIViewController {
             }
         }
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.UIKeyboardDidHide, object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: .UIKeyboardDidHide, object: nil, queue: nil) { _ in
             DispatchQueue.main.async {
                 self.keyboardViewLabel?.removeFromSuperview()
             }
         }
-    }
-
-    func key() {
-
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -110,6 +105,10 @@ class RPPTController: UIViewController {
                 self.navigationController?.navigationBar.alpha = 1.0
             }
         }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Setup
@@ -146,9 +145,7 @@ class RPPTController: UIViewController {
             guard let view = self?.view else { return }
 
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-
             subscriberView.translatesAutoresizingMaskIntoConstraints = false
-//            subscriberView.transform = CGAffineTransform(scaleX: -1, y: 1)
             self?.view.addSubview(subscriberView)
 
             let constraints = [
@@ -185,12 +182,12 @@ class RPPTController: UIViewController {
         alertController.addAction(action)
         present(alertController, animated: true, completion: nil)
 
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+//        UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     // MARK: - Comms
 
-    // TODO: THIS
+    // TODO: Refactor
     @objc func messageChanged(notification: NSNotification) {
         guard let result = notification.userInfo as? [String:String] else { return }
 
@@ -201,35 +198,37 @@ class RPPTController: UIViewController {
             self.task = RPPTTask(content: content, messageID: taskID)
         }
 
-        // temp hijacking
         if result["keyboard"] == "show" {
             // Where do these numbers come from
-            textView.frame = CGRect(x: 50, y: self.view.frame.height - 256, width: self.view.frame.width - 10, height: 40)
+            textView.frame = CGRect(x: 50,
+                                    y: self.view.frame.height - 256,
+                                    width: self.view.frame.width - 10,
+                                    height: 40)
             self.view.addSubview(textView)
             self.textView.becomeFirstResponder()
-
-
-
         } else if result["keyboard"] == "hide" {
             self.textView.resignFirstResponder()
             self.textView.removeFromSuperview()
         }
 
         if result["camera"] == "show" {
-            if picker == nil {
-                picker = UIImagePickerController()
-                picker?.sourceType = .camera
-                picker?.mediaTypes = [kUTTypeImage as String]
-                picker?.delegate = self
-
-                if let picker = picker {
+            if cameraController == nil {
+                cameraController = RPPTCameraViewController()
+                cameraController?.imageCaptured = { [weak self] image in
+                    self?.photoArray.append(image)
+                    self?.client.sendMessage(text: "[Camera]: Picture Taken")
+                }
+                cameraController?.didTap = { [weak self] taps in
+                    self?.sendTaps(points: taps)
+                }
+                if let picker = cameraController {
                     present(picker, animated: true, completion: nil)
                 }
             }
         } else if result["camera"] == "hide" {
-            if picker != nil {
-                picker?.dismiss(animated: true, completion: nil)
-                picker = nil
+            if cameraController != nil {
+                cameraController?.dismiss(animated: true, completion: nil)
+                cameraController = nil
             }
         }
 
@@ -262,6 +261,7 @@ class RPPTController: UIViewController {
                                   isCameraOverlay: isCameraOverlay)
             } else {
                 self.overlayedImageView.removeFromSuperview()
+                cameraController?.cameraOverlayView = nil
             }
         }
 
@@ -326,16 +326,17 @@ class RPPTController: UIViewController {
         self.view.bringSubview(toFront: overlayedImageView)
     }
 
-    // TODO: Fix
+    // TODO: Make better
     //swiftlint:disable:next identifier_name
     func overlayImage(x: CGFloat, y: CGFloat, height: CGFloat, width: CGFloat, imageEncoding: String, isCameraOverlay: Bool) {
-        let dataDecoded = Data(base64Encoded: imageEncoding, options: .ignoreUnknownCharacters)
-        let decodedimage = UIImage(data: dataDecoded!)
-        overlayedImageView.image = decodedimage
+        guard let dataDecoded = Data(base64Encoded: imageEncoding, options: .ignoreUnknownCharacters) else {
+            return
+        }
+        let iamage = UIImage(data: dataDecoded)
+        overlayedImageView.image = UIImage(data: dataDecoded)
         overlayedImageView.frame = CGRect(x: x, y: y, width: width, height: height)
-        if (isCameraOverlay) {
-            picker?.showsCameraControls = false
-            picker?.cameraOverlayView = overlayedImageView
+        if isCameraOverlay {
+            self.cameraController?.cameraOverlayView = overlayedImageView
         } else {
             self.view.addSubview(overlayedImageView)
             self.view.bringSubview(toFront: overlayedImageView)
@@ -369,7 +370,7 @@ class RPPTController: UIViewController {
         sendTaps(points: taps)
     }
 
-    // TODO: Fix
+    // TODO: Fix delay
     //swiftlint:disable:next identifier_name
     func sendTaps(points: [CGPoint]) {
 
@@ -379,7 +380,6 @@ class RPPTController: UIViewController {
 
         canSendTouches = false
 
-        // TODO: WHY DOES THIS EXIST
         for point in points {
             client.createTap(scaledX: point.x, scaledY: point.y)
         }
@@ -391,27 +391,18 @@ class RPPTController: UIViewController {
 
 }
 
-extension RPPTController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-
-    // MARK: - UIImagePickerController Delegate
-
-    func imagePickerController(_ picker: UIImagePickerController,
-                               didFinishPickingMediaWithInfo info: [String : Any]) {
-        guard let image = info[UIImagePickerControllerOriginalImage] as? UIImage else {
-            fatalError("Failed to get image from image picker.")
-        }
-        photoArray.append(image)
-        picker.dismiss(animated: true, completion: nil)
-    }
-}
-
 extension RPPTController: UITextViewDelegate {
 
     // MARK: - UITextViewDelegate
 
     func textViewDidChange(_ textView: UITextView) {
         guard textView.text.last == "\n" else { return }
-        client.sendMessage(text: textView.text)
+        if let text = textView.text {
+            client.sendMessage(text: "[Keyboard]: \"\(text)\"")
+        } else {
+            client.sendMessage(text: "[Keyboard]: \"\"")
+
+        }
         textView.text = ""
     }
 }

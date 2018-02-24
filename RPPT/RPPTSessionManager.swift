@@ -54,6 +54,12 @@ class RPPTSessionManager: NSObject, OTSessionDelegate, OTSubscriberKitDelegate, 
 
     // MARK: - Helpers
 
+    func disconnect() {
+        publishingSession?.disconnect(nil)
+        subscribingSession?.disconnect(nil)
+        publisherKit?.videoCapture = nil
+    }
+
     private func publish(_ session: OTSession) {
         let settings = OTPublisherSettings()
         settings.name = UIDevice.current.name

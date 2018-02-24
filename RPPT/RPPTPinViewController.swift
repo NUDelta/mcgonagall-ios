@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import ReplayKit
 
 class RPPTPinViewController: UIViewController, UITextFieldDelegate {
 
@@ -87,10 +86,6 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
         navigationController?.navigationBar.isTranslucent = true
         navigationController?.navigationBar.tintColor = .purple
         navigationController?.view.backgroundColor = .clear
-
-        RPScreenRecorder.shared().startCapture(handler: { (_, _, _) in
-            RPScreenRecorder.shared().stopCapture(handler: nil)
-        }, completionHandler: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -108,6 +103,8 @@ class RPPTPinViewController: UIViewController, UITextFieldDelegate {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        RPPTClient.shared.disconnect()
+
         if UserDefaults.standard.bool(forKey: "SetupComplete") {
             textField.isEnabled = true
             textField.becomeFirstResponder()
