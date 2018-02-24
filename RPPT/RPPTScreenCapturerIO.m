@@ -13,10 +13,11 @@
 #import "RPPT-Swift.h"
 
 int const PreferredFPS = 10;
+double const QualityFactor = 0.5;
 
-/** Inversely related to performance
+/**
 
- Lab iPhone Perf:
+ Lab iPhone 6 Perf (queue max = 2):
 
  10 FPS:
 
@@ -32,7 +33,7 @@ int const PreferredFPS = 10;
 
  */
 
-double const QualityFactor = 0.5;
+
 
 @interface UIWindow (Private)
 - (IOSurfaceRef)createIOSurface;

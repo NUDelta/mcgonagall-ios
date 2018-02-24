@@ -85,6 +85,9 @@ class RPPTCameraViewController: UIViewController {
                 arImageView.isHidden = false
                 captureButtonView.isHidden = true
                 view.addSubview(newView)
+            } else {
+                arImageView.isHidden = true
+                captureButtonView.isHidden = false
             }
         }
     }

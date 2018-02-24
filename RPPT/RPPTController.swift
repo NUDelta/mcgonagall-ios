@@ -261,6 +261,7 @@ class RPPTController: UIViewController {
                                   isCameraOverlay: isCameraOverlay)
             } else {
                 self.overlayedImageView.removeFromSuperview()
+                cameraController?.cameraOverlayView = nil
             }
         }
 
@@ -331,6 +332,7 @@ class RPPTController: UIViewController {
         guard let dataDecoded = Data(base64Encoded: imageEncoding, options: .ignoreUnknownCharacters) else {
             return
         }
+        let iamage = UIImage(data: dataDecoded)
         overlayedImageView.image = UIImage(data: dataDecoded)
         overlayedImageView.frame = CGRect(x: x, y: y, width: width, height: height)
         if isCameraOverlay {
@@ -395,7 +397,12 @@ extension RPPTController: UITextViewDelegate {
 
     func textViewDidChange(_ textView: UITextView) {
         guard textView.text.last == "\n" else { return }
-        client.sendMessage(text: "[Keyboard]: \"\(textView.text)\"")
+        if let text = textView.text {
+            client.sendMessage(text: "[Keyboard]: \"\(text)\"")
+        } else {
+            client.sendMessage(text: "[Keyboard]: \"\"")
+
+        }
         textView.text = ""
     }
 }
