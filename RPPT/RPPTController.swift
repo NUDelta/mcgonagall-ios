@@ -12,6 +12,8 @@ import MobileCoreServices
 
 class RPPTController: UIViewController {
 
+    // MARK: - Properties
+    
     var syncCode: String!
     var viewHasAppeared = false
 
@@ -33,6 +35,7 @@ class RPPTController: UIViewController {
         didSet {
             if let task = task {
                 title = task.content
+                // TODO: Fix this getting spamed
 //                AudioServicesPlaySystemSound(1003)
             }
         }
@@ -74,6 +77,7 @@ class RPPTController: UIViewController {
             guard let userInfo = notification.userInfo else {return}
 
             if let myData = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect {
+                // Keyboard doesn't show in io capture, need to add view for wizard to see
                 DispatchQueue.main.async {
                     let tempView = UILabel(frame: myData)
                     tempView.backgroundColor = UIColor.darkGray
@@ -98,6 +102,7 @@ class RPPTController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if !viewHasAppeared {
+            // once the vc is on screen, attempt connection
             viewHasAppeared = true
             client.start(withSyncCode: syncCode, safeAreaY: view.safeAreaInsets.top)
             UIView.animate(withDuration: 0.5) {
@@ -118,6 +123,7 @@ class RPPTController: UIViewController {
             self?.task = task
         }
 
+        // TODO: Only do this once so the user can use the map without it moving out from under them
         client.onLocationUpdated = { [weak self] location in
             let mapSpan = MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015)
             let mapCoordinateRegion = MKCoordinateRegion(center: location, span: mapSpan)
@@ -181,13 +187,12 @@ class RPPTController: UIViewController {
         }
         alertController.addAction(action)
         present(alertController, animated: true, completion: nil)
-
-//        UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     // MARK: - Comms
 
     // TODO: Refactor
+    // Called everytime the camera (wizard) reads and processes a new frame
     @objc func messageChanged(notification: NSNotification) {
         guard let result = notification.userInfo as? [String:String] else { return }
 
@@ -371,7 +376,7 @@ class RPPTController: UIViewController {
     }
 
     // TODO: Fix delay
-    //swiftlint:disable:next identifier_name
+    // Sends the user tap locations to the wizard
     func sendTaps(points: [CGPoint]) {
 
         guard canSendTouches else {
